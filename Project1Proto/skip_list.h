@@ -3,7 +3,71 @@
 #include <stdlib.h>
 #include <time.h>
 
+typedef struct mailbox{
+    int id;
+};
 
+typedef struct skipListNode{
+    int id;
+    // Pointer to an array of next node pointers
+    struct skipListNode **next;
+    struct mailbox *mailbox;
+};
+
+static unsigned int next_random = 9001;
+
+static unsigned int generate_random_int(void) {
+    next_random = next_random * 1103515245 + 12345;
+    return (next_random / 65536) % 32768;
+}
+
+static void seed_random(unsigned int seed) {
+    next_random = seed;
+}
+
+struct skipListNode *head = NULL;
+struct skipListNode *tail = NULL;
+unsigned int activeLevels = 0;
+unsigned int totalLevels = 0;
+unsigned int probability = 0;
+unsigned int totalNodes = 0;
+
+
+long init(unsigned int ptrs, unsigned int prob);
+long insert(unsigned int id);
+long removeNode(unsigned int id);
+long search(unsigned int id);
+
+long search(unsigned int id){
+
+}
+
+long removeNode(unsigned int id){
+
+
+}
+
+long insert(unsigned int id){
+
+}
+
+long init(unsigned int ptrs, unsigned int prob){
+    totalLevels = ptrs;
+    probability = prob;
+    head = malloc(sizeof(struct skipListNode));
+    head->id = -1;
+    head->next = malloc(totalLevels * sizeof(struct skipListNode));
+    tail = malloc(sizeof(struct skipListNode));
+    tail->id = -1;
+    tail->next = malloc(sizeof(struct skipListNode));
+    tail->next[0] = NULL;
+    for(int i = 0; i < totalLevels; i++){
+        head->next[i] = tail;
+    }
+}
+
+
+/*
 long mbx421_init(unsigned int ptrs, unsigned int prob);
 long mbx421_create(unsigned long id);
 long mbx421_destroy(unsigned long id);
@@ -236,3 +300,4 @@ long mbx421_read(unsigned int id){
         }
 
 }
+ */
