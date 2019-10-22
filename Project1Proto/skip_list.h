@@ -4,11 +4,12 @@
 #include <time.h>
 
 typedef struct mailbox{
-    int id;
+    unsigned int id;
 };
 
 typedef struct skipListNode{
-    int id;
+    unsigned int id;
+    unsigned int numPtrs;
     // Pointer to an array of next node pointers
     struct skipListNode **next;
     struct mailbox *mailbox;
@@ -30,8 +31,6 @@ struct skipListNode *tail = NULL;
 unsigned int activeLevels = 0;
 unsigned int totalLevels = 0;
 unsigned int probability = 0;
-unsigned int totalNodes = 0;
-
 
 long init(unsigned int ptrs, unsigned int prob);
 long insert(unsigned int id);
@@ -39,12 +38,53 @@ long removeNode(unsigned int id);
 long search(unsigned int id);
 
 long search(unsigned int id){
-
+    unsigned int currLevel = activeLevels;
+    struct skipListNode *temp = head->next[currLevel];
+    // loop moves down
+    while(currLevel >= 0){
+        // loop moves right
+        while(id < temp->id) {
+            temp = temp->next[currLevel];
+            if (temp->next[currLevel]->id == -1 && currLevel > 0) {
+                currLevel--;
+                temp = head->next[currLevel];
+            }
+        }
+        currLevel--;
+    }
+    temp = temp->next[currLevel];
+    if(temp->id == id)
+        return 0;
+    else
+        return -1;
 }
 
 long removeNode(unsigned int id){
-
-
+    unsigned int currLevel = activeLevels;
+    struct skipListNode *temp = head->next[currLevel];
+    // loop moves down
+    while(currLevel >= 0){
+        // loop moves right
+        while(id < temp->id) {
+            temp = temp->next[currLevel];
+            if (temp->next[currLevel]->id == -1 && currLevel > 0) {
+                currLevel--;
+                temp = head->next[currLevel];
+            }
+        }
+        currLevel--;
+    }
+    // node found
+    if(temp->next[currLevel]->id == id) {
+        // pointer reassignment
+        for(int i = 0; i < temp->next[currLevel]->numPtrs; i++){
+            temp->next[i] = temp->next[currLevel]->next[i];
+        }
+        return 0;
+    }
+    else {
+        return -1;
+    }
 }
 
 long insert(unsigned int id){
@@ -85,6 +125,8 @@ long insert(unsigned int id){
         reassignment[i]->next = newNode;
     }
     // FREE UP MEMORY
+    free(reassignment);
+    free(newNode);
 }
 
 long init(unsigned int ptrs, unsigned int prob){
@@ -92,9 +134,11 @@ long init(unsigned int ptrs, unsigned int prob){
     probability = prob;
     head = malloc(sizeof(struct skipListNode));
     head->id = -1;
+    head->numPtrs = ptrs;
     head->next = malloc(totalLevels * sizeof(struct skipListNode));
     tail = malloc(sizeof(struct skipListNode));
     tail->id = -1;
+    tail->numPtrs = 0;
     tail->next = malloc(sizeof(struct skipListNode));
     tail->next[0] = NULL;
     for(int i = 0; i < totalLevels; i++){
