@@ -48,7 +48,43 @@ long removeNode(unsigned int id){
 }
 
 long insert(unsigned int id){
-
+    unsigned int currLevel = activeLevels;
+    struct skipListNode **reassignment = malloc(totalLevels * sizeof(struct skipListNode *));
+    for(int i = 0; i < totalLevels; i++){
+        reassignment[i] = NULL;
+    }
+    struct skipListNode *temp = head->next[currLevel];
+    // loop moves down
+    while(currLevel >= 0){
+        // loop moves right
+        while(id < temp->id){
+            temp = temp->next[currLevel];
+            if(temp->next[currLevel]->id == -1 && currLevel > 0){
+                reassignment[currLevel] = temp;
+                currLevel--;
+                temp = head->next[currLevel];
+            }
+        }
+        reassignment[currLevel] = temp;
+        currLevel--;
+    }
+    // create new node
+    struct skipListNode *newNode = malloc(sizeof(struct skipListNode));
+    newNode->id = id;
+    newNode->mailbox = malloc(sizeof(struct mailbox));
+    // flip coin
+    unsigned int val = generate_random_int();
+    unsigned int success = 0;
+    while(success <= totalLevels && val % probability == 0){
+        success++;
+    }
+    newNode->next = malloc(success * sizeof(struct skipListNode *));
+    // pointer reassignment
+    for(int i = 0; i < success; i++){
+        newNode->next[i] = reassignment[i];
+        reassignment[i]->next = newNode;
+    }
+    // FREE UP MEMORY
 }
 
 long init(unsigned int ptrs, unsigned int prob){
