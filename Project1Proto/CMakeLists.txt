@@ -3,4 +3,4 @@ project(project1proto C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_library(project1proto skip_list.h skip_list.h main.c)
+add_executable(project1proto skip_list.h main.c)
