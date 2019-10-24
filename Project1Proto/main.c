@@ -6,7 +6,7 @@
 int main(){
     long success = 0;
     seed_random((unsigned int)time(NULL));
-    success = init(4,100);
+    success = init(4,2);
     printf("INIT");
     printf("%ld\n", success);
 
@@ -18,13 +18,14 @@ int main(){
     success = addNode(20);
     printf("INSERT 20 ");
     printf("%ld\n", success);
-    display();
-    /*
-    success = insert(10);
-    printf("INSERT 20");
+
+
+    success = addNode(-100);
+    printf("INSERT -100 ");
     printf("%ld\n", success);
+    display();
 
-
+    /*
     success = search(10);
     printf("SEARCH 10");
     printf("%ld\n", success);

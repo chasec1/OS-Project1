@@ -35,7 +35,6 @@ unsigned int PROBABILITY = 0;
 bool INITIALIZED = false;
 
 long init(unsigned int ptrs, unsigned int prob);
-long insert(int id);
 long removeNode(unsigned int id);
 long search(unsigned int id);
 void display();
@@ -65,99 +64,12 @@ long init(unsigned int ptrs, unsigned int prob){
     }
 }
 
-long insert(int id){
-    int currLevel = TOTAL_LEVELS;
-    skipListNode **reassignment = malloc(TOTAL_LEVELS * sizeof(skipListNode *));
-    for(unsigned int i = 0; i < TOTAL_LEVELS; i++){
-        reassignment[i] = NULL;
-    }
-    // first node in list
-    if(HEAD->next[0] == TAIL){
-        printf("\t First node");
-        skipListNode *newNode = malloc(sizeof(skipListNode));
-        newNode->id = id;
-        newNode->mailbox = malloc(sizeof(mailbox));
-        newNode->mailbox->id = id;
-        // flip coin
-        unsigned int val = generate_random_int();
-        unsigned int success = 1;
-        while (success < TOTAL_LEVELS && val % PROBABILITY == 0) {
-            success++;
-        }
-        newNode->next = malloc(success * sizeof(skipListNode *));
-        newNode->numPtrs = success;
-        // pointer reassignment
-        for (unsigned int i = 0; i < success; i++) {
-            newNode->next[i] = TAIL;
-            HEAD->next[i] = newNode;
-        }
-
-
-        return 0;
-    }
-    // nromal insert
-    else {
-        printf("\t normal insert ");
-        skipListNode *temp = HEAD;
-        // breaks loop
-        bool forward = true;
-        // loop moves down
-        while (currLevel >= 0) {
-            // loop moves right
-            while (id > temp->id && forward) {
-                if(id > temp->next[currLevel]->id) {
-                    temp = temp->next[currLevel];
-                } else if (temp->next[currLevel] == TAIL && currLevel > 0) {
-                    reassignment[currLevel] = temp;
-                    currLevel--;
-                    temp = temp->next[currLevel];
-                } else {
-                    forward = false;
-                }
-
-            }
-            reassignment[currLevel] = temp;
-            currLevel--;
-        }
-
-
-        // mailbox already exists
-        if (temp->id == id) {
-            // FREE UP MEMORY
-            free(reassignment);
-            return -1;
-        } else {
-            // create new node
-            skipListNode *newNode = malloc(sizeof(skipListNode));
-            newNode->id = id;
-            newNode->mailbox = malloc(sizeof(mailbox));
-            newNode->mailbox->id = id;
-            // flip coin
-            unsigned int val = generate_random_int();
-            unsigned int success = 1;
-            while (success <= TOTAL_LEVELS && val % PROBABILITY == 0) {
-                success++;
-
-            }
-            // adjusts number of active levels
-            if(success -1 > ACTIVE_LEVELS)
-                ACTIVE_LEVELS = success - 1;
-            newNode->next = malloc(success * sizeof(skipListNode *));
-            newNode->numPtrs = success;
-            // pointer reassignment
-            for (unsigned int i = 0; i < success; i++) {
-                newNode->next[i] = reassignment[i];
-                reassignment[i]->next = &newNode;
-            }
-            // FREE UP MEMORY
-            free(reassignment);
-            return 0;
-        }
-    }
-
-}
 
 long addNode(int id){
+    // Bad ID
+    if(id < 0){
+        return -1;
+    }
     int currLevel = TOTAL_LEVELS - 1;
     skipListNode *temp = HEAD;
     skipListNode **reassignment = malloc(TOTAL_LEVELS * sizeof(skipListNode *));
@@ -174,6 +86,11 @@ long addNode(int id){
             currLevel--;
         }
     }
+    // mailbox already exists
+    if(temp->next[0]->id == id){
+        free(reassignment);
+        return -1;
+    }
     // creates new node
     skipListNode *newNode = malloc(sizeof(skipListNode));
     newNode->id = id;
@@ -182,8 +99,9 @@ long addNode(int id){
     // flip coin
     unsigned int val = generate_random_int();
     unsigned int success = 1;
-    while (success <= TOTAL_LEVELS && val % PROBABILITY == 0) {
+    while (success < TOTAL_LEVELS && val % PROBABILITY == 0) {
         success++;
+        val = generate_random_int();
     }
     if(success -1 > ACTIVE_LEVELS)
         ACTIVE_LEVELS = success - 1;
@@ -194,6 +112,7 @@ long addNode(int id){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
+    free(reassignment);
     return 0;
 }
 
@@ -259,7 +178,7 @@ void display(){
         if(currLevel > 0){
             printf("\n");
             currLevel--;
-            temp = HEAD->next[currLevel];
+            temp = HEAD;
         }
     }
 }
