@@ -10,24 +10,28 @@ int main(){
     printf("INIT");
     printf("%ld\n", success);
 
-    success = insert(20);
+    success = addNode(1);
+    printf("INSERT 1 ");
+    printf("%ld\n", success);
+    //display();
+
+    success = addNode(20);
+    printf("INSERT 20 ");
+    printf("%ld\n", success);
+    display();
+    /*
+    success = insert(10);
     printf("INSERT 20");
     printf("%ld\n", success);
 
-    success = insert(1);
-    printf("INSERT 1");
-    printf("%ld\n", success);
-    printf("INSERT 20");
-
-    success = insert(20);
-    printf("%ld\n", success);
-    printf("INSERT 10");
 
     success = search(10);
+    printf("SEARCH 10");
     printf("%ld\n", success);
 
     success = removeNode(10);
     printf("REMOVE 10");
     printf("%ld\n", success);
+    */
     return 0;
 }

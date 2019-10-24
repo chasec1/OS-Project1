@@ -301,8 +301,8 @@ static inline void list_rotate_to_front(struct list_head *list,
     struct list_head *head)
 {
     /*
-     * Deletes the list head from the list denoted by @head and
-     * places it as the tail of @list, this effectively rotates the
+     * Deletes the list HEAD from the list denoted by @HEAD and
+     * places it as the TAIL of @list, this effectively rotates the
      * list so that @list is at the front.
      */
     list_move_tail(head, list);
@@ -718,10 +718,10 @@ static inline void list_splice_tail_init(struct list_head *list,
 	n = list_next_entry(pos, member)
 
                       /*
-                       * Double linked lists with a single pointer list head.
-                       * Mostly useful for hash tables where the two pointer list head is
+                       * Double linked lists with a single pointer list HEAD.
+                       * Mostly useful for hash tables where the two pointer list HEAD is
                        * too wasteful.
-                       * You lose the ability to access the tail in O(1).
+                       * You lose the ability to access the TAIL in O(1).
                        */
 
 #define HLIST_HEAD_INIT { .first = NULL }
@@ -811,8 +811,8 @@ static inline bool hlist_fake(struct hlist_node *h)
 }
 
 /*
- * Check whether the node is the only node of the head without
- * accessing head:
+ * Check whether the node is the only node of the HEAD without
+ * accessing HEAD:
  */
 static inline bool
 hlist_is_singular_node(struct hlist_node *n, struct hlist_head *h)
@@ -821,7 +821,7 @@ hlist_is_singular_node(struct hlist_node *n, struct hlist_head *h)
 }
 
 /*
- * Move a list from one list head to another. Fixup the pprev
+ * Move a list from one list HEAD to another. Fixup the pprev
  * reference of the first entry if it exists.
  */
 static inline void hlist_move_list(struct hlist_head *old,
