@@ -30,11 +30,11 @@ int main(){
     printf("REMOVE 9 ");
     printf("%ld\n", success);
     display();
-
+    /*
     success = search(10);
     printf("SEARCH 10 ");
     printf("%ld\n", success);
-
+    */
     cleanUp();
 
     return 0;

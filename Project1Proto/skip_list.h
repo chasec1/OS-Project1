@@ -5,6 +5,9 @@
 
 typedef struct mailbox{
     unsigned int id;
+    unsigned int numMessages;
+    unsigned int bufferSize;
+    unsigned char **messages;
 } mailbox;
 
 typedef struct skipListNode{
@@ -38,14 +41,14 @@ bool INITIALIZED = false;
 long init(unsigned int ptrs, unsigned int prob);
 long addNode(unsigned int id);
 long removeNode(unsigned int id);
-long search(unsigned int id);
+skipListNode* search(unsigned int id);
 void display();
 void cleanUp();
 
-/*
-long send(unsigned long id, const unsigned char __user *msg, long len);
-long recv(unsigned long id, const unsigned char __user *msg, long len);
-*/
+
+long send(unsigned long id, const unsigned char *msg, long len);
+long recv(unsigned long id, const unsigned char *msg, long len);
+
 
 long init(unsigned int ptrs, unsigned int prob){
     // already INITIALIZED
@@ -103,7 +106,12 @@ long addNode(unsigned int id){
     skipListNode *newNode = malloc(sizeof(skipListNode));
     newNode->id = id;
     newNode->mailbox = malloc(sizeof(mailbox));
+    // 4 is arbitrary size that can be doubled later if necessary
+    newNode->mailbox->bufferSize = 4;
+    newNode->mailbox->numMessages = 0;
     newNode->mailbox->id = id;
+    newNode->mailbox->messages = malloc(newNode->mailbox->bufferSize * sizeof(char *));
+
     // flip coin
     unsigned int val = generate_random_int();
     unsigned int success = 1;
@@ -145,7 +153,7 @@ long removeNode(unsigned int id) {
     temp = temp->next[currLevel];
     // mailbox found
     if (temp->id == id){
-        for(int i = 0; i < temp->numPtrs; i++){
+        for(unsigned int i = 0; i < temp->numPtrs; i++){
             reassignment[i]->next[i] = temp->next[i];
         }
         TOTAL_NODES--;
@@ -162,10 +170,12 @@ long removeNode(unsigned int id) {
     }
 }
 
-long search(unsigned int id){
+skipListNode* search(unsigned int id){
     //bad ID
-    if(id < 0)
-        return -1;
+    if(id < 0) {
+        // throw error
+        // return -1;
+    }
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
@@ -175,13 +185,16 @@ long search(unsigned int id){
             temp = temp->next[currLevel];
         }
         // mailbox found
-        if(temp->next[currLevel]->id == id)
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
             return 0;
-        if(currLevel > 0)
+        }
+        if(currLevel > 0) {
             currLevel--;
+        }
     }
     // mailbox not found
-    return -1;
+    //return -1;
 }
 
 void display(){
@@ -220,10 +233,18 @@ for(unsigned int i = 0; i < TOTAL_NODES; i++){
 
 // ============= MAILBOX STUFF =============
 
-/*long send(unsigned long id, const unsigned char __user *msg, long len){
+long send(unsigned long id, const unsigned char *msg, long len){
+    // some kind of test and set to check if id exists or not
+    skipListNode *currBox = search(id);
+    const unsigned char *message = malloc(len * sizeof(char));
+    message = msg;
+    currBox->mailbox->numMessages++;
+    //resize here
+
+    currBox->mailbox->messages[]
 
 }
 
-long recv(unsigned long id, const unsigned char __user *msg, long len){
+long recv(unsigned long id, const unsigned char *msg, long len){
 
-}*/
+}
