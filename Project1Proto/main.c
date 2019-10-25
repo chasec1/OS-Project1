@@ -20,19 +20,21 @@ int main(){
     printf("%ld\n", success);
 
 
-    success = addNode(-100);
-    printf("INSERT -100 ");
+    success = addNode(10);
+    printf("INSERT 10 ");
     printf("%ld\n", success);
     display();
 
-    /*
-    success = search(10);
-    printf("SEARCH 10");
-    printf("%ld\n", success);
 
     success = removeNode(10);
-    printf("REMOVE 10");
+    printf("REMOVE 10 ");
     printf("%ld\n", success);
-    */
+    display();
+
+    success = search(10);
+    printf("SEARCH 10 ");
+    printf("%ld\n", success);
+
+
     return 0;
 }

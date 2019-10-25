@@ -116,60 +116,67 @@ long addNode(int id){
     return 0;
 }
 
-long removeNode(unsigned int id){
+long removeNode(unsigned int id) {
+    //bad ID
+    if (id < 0)
+        return -1;
     unsigned int currLevel = ACTIVE_LEVELS;
-    skipListNode *temp = HEAD->next[currLevel];
+    skipListNode *temp = HEAD;
+    skipListNode **reassignment = malloc(ACTIVE_LEVELS * sizeof(skipListNode *));
     // loop moves down
-    while(currLevel >= 0){
+    for (int i = ACTIVE_LEVELS; i >= 0; i--) {
         // loop moves right
-        while(id < temp->id) {
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
-            if (temp->next[currLevel]->id == -1 && currLevel > 0) {
-                currLevel--;
-                temp = HEAD->next[currLevel];
-            }
         }
-        currLevel--;
+        reassignment[i] = temp;
+        if (currLevel > 0)
+            currLevel--;
     }
-    // node found
-    if(temp->next[currLevel]->id == id) {
-        // pointer reassignment
-        for(unsigned int i = 0; i < temp->next[currLevel]->numPtrs; i++){
-            temp->next[i] = temp->next[currLevel]->next[i];
+    temp = temp->next[currLevel];
+    // mailbox found
+    if (temp->id == id){
+        for(int i = 0; i < temp->numPtrs; i++){
+            reassignment[i]->next[i] = temp->next[i];
         }
+
+        printf("FREEING ");
+        printf("%d\n", temp->id);
+        free(temp);
         return 0;
     }
+    // mailbox not found
     else {
         return -1;
     }
 }
 
 long search(unsigned int id){
-    unsigned int currLevel = ACTIVE_LEVELS;
-    skipListNode *temp = HEAD->next[currLevel];
-    // loop moves down
-    while(currLevel >= 0){
-        // loop moves right
-        while(id < temp->id) {
-            temp = temp->next[currLevel];
-            if (temp->next[currLevel]->id == -1 && currLevel > 0) {
-                currLevel--;
-                temp = HEAD->next[currLevel];
-            }
-        }
-        currLevel--;
-    }
-    temp = temp->next[currLevel];
-    if(temp->id == id)
-        return 0;
-    else
+    //bad ID
+    if(id < 0)
         return -1;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id)
+            return 0;
+        if(currLevel > 0)
+            currLevel--;
+    }
+    // mailbox not found
+    return -1;
 }
 
 void display(){
     skipListNode *temp = HEAD;
     int currLevel = ACTIVE_LEVELS;
-    for(int i = TOTAL_LEVELS - 1; i >= 0; i--) {
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL) {
             temp = temp->next[currLevel];
