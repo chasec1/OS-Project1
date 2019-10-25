@@ -26,8 +26,8 @@ int main(){
     display();
 
 
-    success = removeNode(10);
-    printf("REMOVE 10 ");
+    success = removeNode(9);
+    printf("REMOVE 9 ");
     printf("%ld\n", success);
     display();
 
@@ -35,6 +35,7 @@ int main(){
     printf("SEARCH 10 ");
     printf("%ld\n", success);
 
+    cleanUp();
 
     return 0;
 }

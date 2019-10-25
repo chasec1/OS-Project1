@@ -29,15 +29,23 @@ static void seed_random(unsigned int seed) {
 // GLOBAL VARIABLES
 struct skipListNode *HEAD = NULL;
 struct skipListNode *TAIL = NULL;
+unsigned int TOTAL_NODES = 0;
 unsigned int ACTIVE_LEVELS = 0;
 unsigned int TOTAL_LEVELS = 0;
 unsigned int PROBABILITY = 0;
 bool INITIALIZED = false;
 
 long init(unsigned int ptrs, unsigned int prob);
+long addNode(unsigned int id);
 long removeNode(unsigned int id);
 long search(unsigned int id);
 void display();
+void cleanUp();
+
+/*
+long send(unsigned long id, const unsigned char __user *msg, long len);
+long recv(unsigned long id, const unsigned char __user *msg, long len);
+*/
 
 long init(unsigned int ptrs, unsigned int prob){
     // already INITIALIZED
@@ -65,7 +73,7 @@ long init(unsigned int ptrs, unsigned int prob){
 }
 
 
-long addNode(int id){
+long addNode(unsigned int id){
     // Bad ID
     if(id < 0){
         return -1;
@@ -112,6 +120,7 @@ long addNode(int id){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
+    TOTAL_NODES++;
     free(reassignment);
     return 0;
 }
@@ -139,14 +148,16 @@ long removeNode(unsigned int id) {
         for(int i = 0; i < temp->numPtrs; i++){
             reassignment[i]->next[i] = temp->next[i];
         }
-
+        TOTAL_NODES--;
         printf("FREEING ");
         printf("%d\n", temp->id);
         free(temp);
+        free(reassignment);
         return 0;
     }
     // mailbox not found
     else {
+        free(reassignment);
         return -1;
     }
 }
@@ -190,244 +201,29 @@ void display(){
     }
 }
 
-
-
-
-
-
-
-
-/*
-long mbx421_init(unsigned int ptrs, unsigned int prob);
-long mbx421_create(unsigned long id);
-long mbx421_destroy(unsigned long id);
-long mbx421_read(unsigned int id);
-
-typedef struct mailbox{
-    int id;
-};
-
-typedef struct skip_list_node{
-    struct skip_list_node* m_below;
-    struct list_head m_link;
-    int m_key;
-    struct mailbox* m_mailbox;
-
-};
-
-static unsigned int next_random = 9001;
-
-static unsigned int generate_random_int(void) {
-    next_random = next_random * 1103515245 + 12345;
-    return (next_random / 65536) % 32768;
+void cleanUp(){
+    skipListNode *temp = HEAD->next[0];
+for(unsigned int i = 0; i < TOTAL_NODES; i++){
+        HEAD->next[0] = temp->next[0];
+        printf("FREEING ");
+        printf("%d\n", temp->id);
+        free(temp->next);
+        free(temp->mailbox);
+        free(temp);
+        temp = HEAD->next[0];
+    }
+    free(HEAD->next);
+    free(HEAD);
+    free(TAIL->next);
+    free(TAIL);
 }
 
-static void seed_random(unsigned int seed) {
-    next_random = seed;
-}
+// ============= MAILBOX STUFF =============
 
-// Globals
-struct list_head *levelHeads = NULL;
-unsigned int ACTIVE_LEVELS = 0;
-unsigned int TOTAL_LEVELS = 0;
-unsigned int PROBABILITY = 0;
-unsigned int totalNodes = 0;
-
-// INITIALIZE
-long mbx421_init(unsigned int ptrs, unsigned int prob){
-    if(prob < 0)
-        return -1;
-    else if(ptrs < 1)
-        return -1;
-    else{
-        PROBABILITY = prob;
-        TOTAL_LEVELS = ptrs;
-        levelHeads = malloc (ptrs * sizeof(struct list_head));
-        for(int i = 0; i < ptrs; i++) {
-            levelHeads[i].next = NULL;
-            levelHeads[i].prev = NULL;
-    }
-        return 0;
-    }
-    }
-
-
-// CREATE
-long mbx421_create(unsigned long id){
-    // initializes mailbox that is being added
-    struct skip_list_node *temp = malloc(sizeof(struct skip_list_node));
-    temp->m_below = NULL;
-    temp->m_key = id;
-    temp->m_link.next = NULL;
-    temp->m_link.prev = NULL;
-    temp->m_mailbox = malloc(sizeof(struct mailbox));
-    int curLevel = 0;
-    //First item in List
-    if(levelHeads[0].next == NULL){
-        list_add(temp, &levelHeads[0]);
-        totalNodes++;
-    }
-    // nodes already exist before
-
-    else{
-        struct list_head pos = levelHeads[ACTIVE_LEVELS];
-        int posID = pos.next+ sizeof(int);
-        while(id < posID){
-            if(pos.next == NULL && ACTIVE_LEVELS-- != 0){
-
-            }
-            pos = *pos.next;
-            posID = pos.next + sizeof(int);
-        }
-        struct skip_list_node *below = &pos - sizeof(struct list_head);
-        while(below != NULL){
-            below = below->m_below;
-        }
-        posID = pos.next + sizeof(int);
-        pos = *below->m_link.next;
-        while(posID != id && posID < id){
-            pos = *pos.next;
-            posID = pos.next + sizeof(int);
-        }
-        list_add(temp, &pos);
-
-    }
-
-    // Handles if I need to add more levels
-    unsigned int ranVal = 0;
-    bool checkLevel = true;
-    while(curLevel < TOTAL_LEVELS && checkLevel) {
-        //Check if I need to move level
-        seed_random((unsigned int) time(NULL));
-        ranVal = generate_random_int();
-
-        //moves up level
-        if (ranVal % PROBABILITY == 0) {
-            curLevel++;
-
-            // creates node for next level up that points to the same mailbox
-            struct skip_list_node *newTemp = malloc(sizeof(struct skip_list_node));
-            newTemp->m_below = temp;
-            newTemp->m_key = temp->m_key;
-            newTemp->m_link.next = NULL;
-            newTemp->m_link.prev = NULL;
-            newTemp->m_mailbox = temp->m_mailbox;
-
-            //If first node on level
-            if (curLevel > ACTIVE_LEVELS) {
-                ACTIVE_LEVELS++;
-
-
-                list_add(newTemp, &levelHeads[curLevel]);
-                totalNodes++;
-
-            }
-            //COPY OF NORMAL INSERT
-            else{
-                struct list_head pos = levelHeads[ACTIVE_LEVELS];
-                int posID = pos.next+ sizeof(int);
-                while(id < posID){
-                    if(pos.next == NULL && ACTIVE_LEVELS-- != 0){
-
-                    }
-                    pos = *pos.next;
-                    posID = pos.next + sizeof(int);
-                }
-                struct skip_list_node *below = &pos - sizeof(struct list_head);
-                while(below != NULL){
-                    below = below->m_below;
-                }
-                posID = pos.next + sizeof(int);
-                pos = *below->m_link.next;
-                while(posID != id && posID < id){
-                    pos = *pos.next;
-                    posID = pos.next + sizeof(int);
-                }
-                list_add(temp, &pos);
-            }
-
-
-        }
-        // stays on level
-        else{
-            checkLevel = false;
-        }
-
-        }
-    }
-
-
-// DESTROY
-long mbx421_destroy(unsigned long id){
-    unsigned int curLevel = ACTIVE_LEVELS;
-    struct list_head pos = levelHeads[ACTIVE_LEVELS];
-    unsigned int posID = pos.next + sizeof(int);
-    while(id < posID) {
-        if (pos.next == NULL && curLevel >= 0) {
-            pos = levelHeads[ACTIVE_LEVELS];
-            curLevel--;
-        } else {
-            pos = *pos.next;
-        }
-        posID = pos.next + sizeof(int);
-    }
-    struct skip_list_node *below = &pos - sizeof(struct list_head);
-    while(below != NULL){
-        below = below->m_below;
-    }
-    if(posID == id) {
-        __list_del(&pos, pos.next);
-    }
-    else {
-        posID = pos.next + sizeof(int);
-        pos = *below->m_link.next;
-        while(posID != id && posID < id){
-            pos = *pos.next;
-            posID = pos.next + sizeof(int);
-        }
-        __list_del(&pos, pos.next);
-    }
-    //Mailbox not found
-    if(curLevel < 0) {
-        return -1;
-    }
-
+/*long send(unsigned long id, const unsigned char __user *msg, long len){
 
 }
-// READ
-long mbx421_read(unsigned int id){
-    unsigned int curLevel = ACTIVE_LEVELS;
-    struct list_head pos = levelHeads[ACTIVE_LEVELS];
-    unsigned int posID = pos.next + sizeof(int);
-    while(id < posID) {
-        if (pos.next == NULL && curLevel >= 0) {
-            pos = levelHeads[ACTIVE_LEVELS];
-            curLevel--;
-        } else {
-            pos = *pos.next;
-        }
-        posID = pos.next + sizeof(int);
-    }
-    struct skip_list_node *below = &pos - sizeof(struct list_head);
-    while(below != NULL){
-        below = below->m_below;
-    }
-    if(posID == id) {
-        // Found it
-    }
-    else {
-        posID = pos.next + sizeof(int);
-        pos = *below->m_link.next;
-        while(posID != id && posID < id){
-            pos = *pos.next;
-            posID = pos.next + sizeof(int);
-        }
-        // Mailbox found
-    }
-        //Mailbox not found
-        if(curLevel < 0) {
-            return -1;
-        }
 
-}
- */
+long recv(unsigned long id, const unsigned char __user *msg, long len){
+
+}*/
