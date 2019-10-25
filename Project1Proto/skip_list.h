@@ -6,8 +6,9 @@
 typedef struct mailbox{
     unsigned int id;
     unsigned int numMessages;
+    unsigned int head;
     unsigned int bufferSize;
-    unsigned char **messages;
+    const unsigned char **messages;
 } mailbox;
 
 typedef struct skipListNode{
@@ -108,6 +109,7 @@ long addNode(unsigned int id){
     newNode->mailbox = malloc(sizeof(mailbox));
     // 4 is arbitrary size that can be doubled later if necessary
     newNode->mailbox->bufferSize = 4;
+    newNode->mailbox->head = 0;
     newNode->mailbox->numMessages = 0;
     newNode->mailbox->id = id;
     newNode->mailbox->messages = malloc(newNode->mailbox->bufferSize * sizeof(char *));
@@ -234,17 +236,62 @@ for(unsigned int i = 0; i < TOTAL_NODES; i++){
 // ============= MAILBOX STUFF =============
 
 long send(unsigned long id, const unsigned char *msg, long len){
-    // some kind of test and set to check if id exists or not
+    // bad id
+    if(id < 0){
+        return -1;
+    }
+    // some kind of try and catch to check if id exists or not
     skipListNode *currBox = search(id);
     const unsigned char *message = malloc(len * sizeof(char));
     message = msg;
+    // declared for readability and simplicity
+    unsigned int numMessages = currBox->mailbox->numMessages;
+    unsigned int bufferSize = currBox->mailbox->bufferSize;
+
     currBox->mailbox->numMessages++;
     //resize here
+    if(numMessages > bufferSize){
+       currBox->mailbox->messages = realloc(currBox->mailbox->messages, bufferSize * sizeof(char *));
+       currBox->mailbox->bufferSize = 2 * bufferSize;
+        /*
+        // doubles size of original buffer
+        const unsigned char **temp = malloc((bufferSize * 2) * sizeof(char *));
+        for(unsigned int i = 0; i < bufferSize; i++){
+            temp[i] = currBox->mailbox->messages[head];
+            heada+;
+            // loops back to front
+            if(head > bufferSize){
+                head = 0;
+            }
 
-    currBox->mailbox->messages[]
+        }
+         */
+    }
+    // add message to buffer
+    currBox->mailbox->messages[numMessages - 1] = message;
+    return 0;
 
 }
 
 long recv(unsigned long id, const unsigned char *msg, long len){
+    // bad id
+    if(id < 0){
+        return -1;
+    }
 
+    msg = malloc(len * sizeof(char));
+
+    // some sort of try and catch
+    skipListNode *currBox = search(id);
+
+    // assigns msg to the head of the queue
+    unsigned int head = currBox->mailbox->head;
+    msg = currBox->mailbox->messages[head];
+
+    //queue maintenance
+    head++;
+    // loop back to indx 0
+    if(head > currBox->mailbox->bufferSize)
+        head = 0;
+    return 0;
 }

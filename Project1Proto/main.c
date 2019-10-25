@@ -30,6 +30,9 @@ int main(){
     printf("REMOVE 9 ");
     printf("%ld\n", success);
     display();
+
+    const unsigned char *message =
+    send()
     /*
     success = search(10);
     printf("SEARCH 10 ");
