@@ -2,14 +2,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 typedef struct mailbox{
     unsigned int id;
     unsigned int numMessages;
+    struct mail *head;
+    struct mail *tail;
+
+    /*
     unsigned int head;
     unsigned int bufferSize;
     const unsigned char **messages;
+    */
 } mailbox;
+
+typedef struct mail{
+  unsigned int size;
+  struct mail * next;
+  unsigned char* message;
+} mail;
 
 typedef struct skipListNode{
     int id;
@@ -107,12 +119,20 @@ long addNode(unsigned int id){
     skipListNode *newNode = malloc(sizeof(skipListNode));
     newNode->id = id;
     newNode->mailbox = malloc(sizeof(mailbox));
+    newNode->mailbox->head = malloc(sizeof(mail));
+    newNode->mailbox->head->size = 0;
+    newNode->mailbox->head->message = NULL;
+    newNode->mailbox->head->next = newNode->mailbox->tail;
+    newNode->mailbox->tail = newNode->mailbox->head;
+    /*
     // 4 is arbitrary size that can be doubled later if necessary
     newNode->mailbox->bufferSize = 4;
     newNode->mailbox->head = 0;
+    */
     newNode->mailbox->numMessages = 0;
     newNode->mailbox->id = id;
-    newNode->mailbox->messages = malloc(newNode->mailbox->bufferSize * sizeof(char *));
+
+    //newNode->mailbox->messages = malloc(newNode->mailbox->bufferSize * sizeof(char *));
 
     // flip coin
     unsigned int val = generate_random_int();
@@ -161,6 +181,10 @@ long removeNode(unsigned int id) {
         TOTAL_NODES--;
         printf("FREEING ");
         printf("%d\n", temp->id);
+        free(temp->next);
+        //free(temp->mailbox->messages);
+        // NEED TO ITERATE OVER MAIL LINKED LIST AND DELETE ALL
+        free(temp->mailbox);
         free(temp);
         free(reassignment);
         return 0;
@@ -189,7 +213,7 @@ skipListNode* search(unsigned int id){
         // mailbox found
         if(temp->next[currLevel]->id == id) {
             temp = temp->next[currLevel];
-            return 0;
+            return temp;
         }
         if(currLevel > 0) {
             currLevel--;
@@ -214,6 +238,7 @@ void display(){
             temp = HEAD;
         }
     }
+    printf("\n");
 }
 
 void cleanUp(){
@@ -223,6 +248,17 @@ for(unsigned int i = 0; i < TOTAL_NODES; i++){
         printf("FREEING ");
         printf("%d\n", temp->id);
         free(temp->next);
+        /*
+        for(int i = 0; i < temp->mailbox->numMessages; i++){
+            free(temp->mailbox->messages[temp->mailbox->head]);
+            temp->mailbox->head += 1;
+
+            // loops back around if needed
+            if(temp->mailbox->head > temp->mailbox->bufferSize)
+                temp->mailbox->head = 0;
+        }
+        free(temp->mailbox->messages);
+         */
         free(temp->mailbox);
         free(temp);
         temp = HEAD->next[0];
@@ -240,37 +276,57 @@ long send(unsigned long id, const unsigned char *msg, long len){
     if(id < 0){
         return -1;
     }
+    skipListNode *currBox = search(id);
+    mail *newMail = malloc(sizeof(mail));
+    newMail->message = malloc(len * sizeof(char));
+    memcpy(newMail->message,msg,len);
+    currBox->mailbox->tail->next = newMail;
+    newMail->next = currBox->mailbox->tail;
+    currBox->mailbox->tail = newMail;
+    printf("%s\n", newMail->message);
+    return 0;
+
+
+
+    /*
     // some kind of try and catch to check if id exists or not
     skipListNode *currBox = search(id);
-    const unsigned char *message = malloc(len * sizeof(char));
-    message = msg;
+    unsigned char *message = malloc(len * sizeof(char));
+
+    //message = msg;
+
+    for(long i = 0; i < len; i++){
+        message[i] = msg[i];
+    }
+
     // declared for readability and simplicity
     unsigned int numMessages = currBox->mailbox->numMessages;
     unsigned int bufferSize = currBox->mailbox->bufferSize;
 
-    currBox->mailbox->numMessages++;
+    currBox->mailbox->numMessages = numMessages++;
     //resize here
     if(numMessages > bufferSize){
        currBox->mailbox->messages = realloc(currBox->mailbox->messages, bufferSize * sizeof(char *));
        currBox->mailbox->bufferSize = 2 * bufferSize;
-        /*
+        /////////////////////////////////////////////////////////////
         // doubles size of original buffer
         const unsigned char **temp = malloc((bufferSize * 2) * sizeof(char *));
         for(unsigned int i = 0; i < bufferSize; i++){
             temp[i] = currBox->mailbox->messages[head];
-            heada+;
+            head++;
             // loops back to front
             if(head > bufferSize){
                 head = 0;
             }
 
         }
-         */
+         ///////////////////////////
     }
     // add message to buffer
     currBox->mailbox->messages[numMessages - 1] = message;
+    printf("%s\n", currBox->mailbox->messages[numMessages - 1]);
     return 0;
-
+    */
 }
 
 long recv(unsigned long id, const unsigned char *msg, long len){
@@ -279,6 +335,17 @@ long recv(unsigned long id, const unsigned char *msg, long len){
         return -1;
     }
 
+    skipListNode *currBox = search(id);
+    // mailbox empty
+    if(currBox->mailbox->head == currBox->mailbox->tail){
+        return -1;
+    }
+    memcpy(msg, currBox->mailbox->head->next->message, len);
+    mail *temp = currBox->mailbox->head->next->next;
+    free(currBox->mailbox->head->next);
+    currBox->mailbox->head->next = temp;
+    return 0;
+    /*
     msg = malloc(len * sizeof(char));
 
     // some sort of try and catch
@@ -294,4 +361,5 @@ long recv(unsigned long id, const unsigned char *msg, long len){
     if(head > currBox->mailbox->bufferSize)
         head = 0;
     return 0;
+     */
 }

@@ -31,8 +31,21 @@ int main(){
     printf("%ld\n", success);
     display();
 
-    const unsigned char *message =
-    send()
+
+    unsigned char message[4];
+    message[0] = '1';
+    message[1] = '2';
+    message[2] = '3';
+    success = send(20, message, 4);
+    printf("send 101 ");
+    printf("%ld\n", success);
+
+    const unsigned char newMsg;
+    success = recv(20, &newMsg, 4);
+    printf("receive 101 ");
+    printf("%s\n", newMsg);
+    printf("%ld\n", success);
+
     /*
     success = search(10);
     printf("SEARCH 10 ");
