@@ -120,10 +120,13 @@ long addNode(unsigned int id){
     newNode->id = id;
     newNode->mailbox = malloc(sizeof(mailbox));
     newNode->mailbox->head = malloc(sizeof(mail));
+    newNode->mailbox->tail = malloc(sizeof(mail));
     newNode->mailbox->head->size = 0;
     newNode->mailbox->head->message = NULL;
+    newNode->mailbox->tail->size = 0;
+    newNode->mailbox->tail->message = NULL;
     newNode->mailbox->head->next = newNode->mailbox->tail;
-    newNode->mailbox->tail = newNode->mailbox->head;
+    newNode->mailbox->tail->next = newNode->mailbox->head;
     /*
     // 4 is arbitrary size that can be doubled later if necessary
     newNode->mailbox->bufferSize = 4;
@@ -280,7 +283,7 @@ long send(unsigned long id, const unsigned char *msg, long len){
     mail *newMail = malloc(sizeof(mail));
     newMail->message = malloc(len * sizeof(char));
     memcpy(newMail->message,msg,len);
-    currBox->mailbox->tail->next = newMail;
+    currBox->mailbox->tail->next->next = newMail;
     newMail->next = currBox->mailbox->tail;
     currBox->mailbox->tail = newMail;
     printf("%s\n", newMail->message);
