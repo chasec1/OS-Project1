@@ -31,19 +31,18 @@ int main(){
     printf("%ld\n", success);
     display();
 
-
-    unsigned char *message;
-    message = "hi";
-    success = send(20, message, 4);
+    /*
+    unsigned char message[3] = "hi";
+    success = send(20, message, 3);
     printf("send 101 ");
     printf("%ld\n", success);
 
-    const unsigned char newMsg;
-    success = recv(20, &newMsg, 4);
+    unsigned char newMsg;
+    success = recv(20, &newMsg, 3);
     printf("receive 101 ");
-    printf("%u\n", newMsg);
+    printf("%s\n", &newMsg);
     printf("%ld\n", success);
-
+    */
     /*
     success = search(10);
     printf("SEARCH 10 ");
