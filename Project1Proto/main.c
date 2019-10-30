@@ -32,10 +32,8 @@ int main(){
     display();
 
 
-    unsigned char message[4];
-    message[0] = '1';
-    message[1] = '2';
-    message[2] = '3';
+    unsigned char *message;
+    message = "hi";
     success = send(20, message, 4);
     printf("send 101 ");
     printf("%ld\n", success);
@@ -43,7 +41,7 @@ int main(){
     const unsigned char newMsg;
     success = recv(20, &newMsg, 4);
     printf("receive 101 ");
-    printf("%s\n", newMsg);
+    printf("%u\n", newMsg);
     printf("%ld\n", success);
 
     /*
