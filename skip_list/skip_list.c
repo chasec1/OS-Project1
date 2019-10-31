@@ -55,16 +55,17 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob){
         INITIALIZED = true;
         TOTAL_LEVELS = ptrs;
         PROBABILITY = prob;
-        HEAD = kmalloc(sizeof(skipListNode));
+        HEAD = kmalloc(sizeof(skipListNode), GFP_KERNEL);
         HEAD->id = -1;
         HEAD->numPtrs = ptrs;
-        HEAD->next = kmalloc(TOTAL_LEVELS * sizeof(skipListNode));
-        TAIL = kmalloc(sizeof(skipListNode));
+        HEAD->next = kmalloc(TOTAL_LEVELS * sizeof(skipListNode), GFP_KERNEL);
+        TAIL = kmalloc(sizeof(skipListNode), GFP_KERNEL);
         TAIL->id = -1;
         TAIL->numPtrs = 0;
-        TAIL->next = kmalloc(sizeof(skipListNode));
+        TAIL->next = kmalloc(sizeof(skipListNode), GFP_KERNEL);
         TAIL->next[0] = NULL;
-        for (unsigned int i = 0; i < TOTAL_LEVELS; i++) {
+        unsigned int i = 0;
+        for (i; i < TOTAL_LEVELS; i++) {
             HEAD->next[i] = TAIL;
         }
     return 0;
@@ -77,12 +78,14 @@ SYSCALL_DEFINE0(mbx421_shutdown){
         return -ENODEV;
 
         skipListNode *temp = HEAD->next[0];
-        for(unsigned int i = 0; i < TOTAL_NODES; i++){
+        unsigned int i = 0;
+        for(i; i < TOTAL_NODES; i++){
             HEAD->next[0] = temp->next[0];
             kfree(temp->next);
 
             mail *mailPtr = temp->mailbox->head->next;
-            for(unsigned int j = 0; j < temp->mailbox->numMessages; j++){
+            unsigned in j = 0;
+            for(j; j < temp->mailbox->numMessages; j++){
                 temp->mailbox->head = mailPtr->next;
                 kfree(mailPtr);
                 mailPtr = temp->mailbox->head->next;
@@ -111,13 +114,15 @@ r       eturn -ENOENT;
     unsigned int currLevel = TOTAL_LEVELS - 1;
     skipListNode *temp = HEAD;
     // reassignment will be used to save nodes where temp traverses down and may need to be reassigned later
-    skipListNode **reassignment = kmalloc(TOTAL_LEVELS * sizeof(skipListNode *));
-    for(unsigned int i = 0; i < TOTAL_LEVELS; i++){
+    skipListNode **reassignment = kmalloc(TOTAL_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
+    unsigned int i = 0;
+    for(i; i < TOTAL_LEVELS; i++){
         reassignment[i] = NULL;
     }
 
     // loop segfaults if i is made unsigned
-    for(int i = TOTAL_LEVELS - 1; i >= 0; i--) {
+    int i = TOTAL_LEVELS - 1;
+    for(i; i >= 0; i--) {
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -133,11 +138,11 @@ r       eturn -ENOENT;
         return -EEXIST;
     }
     // creates new node
-    skipListNode *newNode = kmalloc(sizeof(skipListNode));
+    skipListNode *newNode = kmalloc(sizeof(skipListNode), GFP_KERNEL);
     newNode->id = id;
-    newNode->mailbox = kmalloc(sizeof(mailbox));
-    newNode->mailbox->head = kmalloc(sizeof(mail));
-    newNode->mailbox->tail = kmalloc(sizeof(mail));
+    newNode->mailbox = kmalloc(sizeof(mailbox), GFP_KERNEL);
+    newNode->mailbox->head = kmalloc(sizeof(mail), GFP_KERNEL);
+    newNode->mailbox->tail = kmalloc(sizeof(mail), GFP_KERNEL);
     newNode->mailbox->head->size = 0;
     newNode->mailbox->head->message = NULL;
     newNode->mailbox->tail->size = 0;
@@ -156,11 +161,12 @@ r       eturn -ENOENT;
     if(success -1 > ACTIVE_LEVELS)
         ACTIVE_LEVELS = success - 1;
     // allocates the new nodes array of next pointers
-    newNode->next = kmalloc(success * sizeof(skipListNode *));
+    newNode->next = kmalloc(success * sizeof(skipListNode *), GFP_KERNEL);
     newNode->numPtrs = success;
 
     //reassignment
-    for(unsigned int i = 0; i <= success - 1; i ++){
+    unsigned int i = 0;
+    for(i; i <= success - 1; i ++){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
@@ -180,10 +186,11 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
 
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
-    skipListNode **reassignment = kmalloc(ACTIVE_LEVELS * sizeof(skipListNode *));
+    skipListNode **reassignment = kmalloc(ACTIVE_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
     // loop moves down
     // segfaults if i is made unsigned
-    for (int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS;
+    for (i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -196,7 +203,8 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
     temp = temp->next[currLevel];
     // mailbox found
     if (temp->id == id){
-        for(unsigned int i = 0; i < temp->numPtrs; i++){
+        unsigned int i = 0;
+        for(i; i < temp->numPtrs; i++){
             reassignment[i]->next[i] = temp->next[i];
         }
         TOTAL_NODES--;
@@ -204,7 +212,8 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
 
         // frees up the mail linked list within the mailbox
         mail *mailPtr = temp->mailbox->head->next;
-        for(unsigned int j = 0; j < temp->mailbox->numMessages; j++){
+        unsigned int j = 0;
+        for(j; j < temp->mailbox->numMessages; j++){
             temp->mailbox->head = mailPtr->next;
             kfree(mailPtr);
             mailPtr = temp->mailbox->head->next;
@@ -237,7 +246,8 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id){
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS
+    for(i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -272,7 +282,8 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -292,9 +303,9 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
     }
 
     // without +16 I was getting a weird error and this corrected it, I am not sure why
-    mail *newMail = kmalloc(sizeof(mail) +16 );
+    mail *newMail = kmalloc(sizeof(mail) +16, GFP_KERNEL);
     newMail->size = len;
-    newMail->message = kmalloc(sizeof(char)*len);
+    newMail->message = kmalloc(sizeof(char)*len, GFP_KERNEL);
     memcpy(newMail->message,msg,len);
     currBox->mailbox->tail->next->next = newMail;
     newMail->next = currBox->mailbox->tail;
@@ -316,7 +327,8 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -369,7 +381,8 @@ SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
