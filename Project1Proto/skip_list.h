@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 
 typedef struct mailbox{
     unsigned int numMessages;
@@ -49,7 +50,7 @@ long addNode(unsigned long id);
 long removeNode(unsigned long id);
 skipListNode* search(unsigned long id);
 void display();
-void cleanUp();
+long cleanUp();
 
 
 long send(unsigned long id, const unsigned char *msg, long len);
@@ -60,7 +61,7 @@ long recv(unsigned long id, unsigned char *msg, long len);
 long init(unsigned int ptrs, unsigned int prob){
     // already INITIALIZED
     if(INITIALIZED){
-        return -1;
+        return -EEXIST;
     }
     else {
         INITIALIZED = true;
@@ -84,9 +85,12 @@ long init(unsigned int ptrs, unsigned int prob){
 
 
 long addNode(unsigned long id){
+    //uninitialized skip list
+    if(!INITIALIZED)
+        return -ENODEV;
     // Bad ID
     if(id < 0){
-        return -1;
+        return -ENOENT;
     }
     unsigned int currLevel = TOTAL_LEVELS - 1;
     skipListNode *temp = HEAD;
@@ -110,7 +114,7 @@ long addNode(unsigned long id){
     // mailbox already exists
     if(temp->next[0]->id == id){
         free(reassignment);
-        return -1;
+        return -EEXIST;
     }
     // creates new node
     skipListNode *newNode = malloc(sizeof(skipListNode));
@@ -150,9 +154,13 @@ long addNode(unsigned long id){
 }
 
 long removeNode(unsigned long id) {
+    //uninitialized skip list
+    if(!INITIALIZED)
+        return -ENODEV;
+
     //bad ID
     if (id < 0)
-        return -1;
+        return -ENOENT;
 
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
@@ -195,7 +203,7 @@ long removeNode(unsigned long id) {
     // mailbox not found
     else {
         free(reassignment);
-        return -1;
+        return -ENOENT;
     }
 }
 
@@ -244,7 +252,11 @@ void display(){
     }
 }
 
-void cleanUp(){
+long cleanUp(){
+    //uninitialized skip list
+    if(!INITIALIZED)
+        return -ENODEV;
+
     skipListNode *temp = HEAD->next[0];
     for(unsigned int i = 0; i < TOTAL_NODES; i++){
         HEAD->next[0] = temp->next[0];
@@ -266,9 +278,11 @@ void cleanUp(){
     free(HEAD);
     free(TAIL->next);
     free(TAIL);
+    return 0;
 }
 
 long send(unsigned long id, const unsigned char *msg, long len){
+
     /*
     // bad id
     if(id < 0){
@@ -279,10 +293,13 @@ long send(unsigned long id, const unsigned char *msg, long len){
 
     */
 
+    //uninitialized skip list
+    if(!INITIALIZED)
+        return -ENODEV;
+
     //bad ID
     if(id < 0) {
-        // throw error
-        // return -1;
+        return -ENOENT;
     }
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
@@ -304,7 +321,7 @@ long send(unsigned long id, const unsigned char *msg, long len){
     }
     // mailbox not found
     if(currBox == NULL){
-        return -1;
+        return -ENOENT;
     }
 
     // without +16 I was getting a weird error and this corrected it, I am not sure why
@@ -329,11 +346,13 @@ long recv(unsigned long id, unsigned char *msg, long len){
 
     skipListNode *currBox = search(id);
     */
+    //uninitialized skip list
+    if(!INITIALIZED)
+        return -ENODEV;
 
     //bad ID
     if(id < 0) {
-        // throw error
-        // return -1;
+        return -ENOENT;
     }
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
@@ -355,12 +374,12 @@ long recv(unsigned long id, unsigned char *msg, long len){
     }
     // mailbox not found
     if(currBox == NULL){
-        return -1;
+        return -ENOENT;
     }
 
     // mailbox empty
     if(currBox->mailbox->numMessages == 0){
-        return -1;
+        return -ESRCH;
     }
 
     // copies items in kernel memory to user memory
