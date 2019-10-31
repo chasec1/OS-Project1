@@ -1,10 +1,9 @@
 #include <linux/kernel.h>
 #include <linux/syscalls.h>
-#include "list.h"
-#include <stdio.h>
-#include <time.h>
-#include <string.h>
-#include <errno.h>
+#include <linux/list.h>
+#include <linux/time.h>
+#include <linux/string.h>
+#include <linux/errno.h>
 
 typedef struct mailbox{
     unsigned int numMessages;
@@ -60,16 +59,16 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob){
         HEAD->numPtrs = ptrs;
         HEAD->next = kmalloc(TOTAL_LEVELS * sizeof(skipListNode), GFP_KERNEL);
         TAIL = kmalloc(sizeof(skipListNode), GFP_KERNEL);
-        TAIL->id = -1;
-        TAIL->numPtrs = 0;
-        TAIL->next = kmalloc(sizeof(skipListNode), GFP_KERNEL);
+        TAIL-> id = -1;
+        TAIL-> numPtrs = 0;
+        TAIL-> next = kmalloc(sizeof(skipListNode), GFP_KERNEL);
         TAIL->next[0] = NULL;
         unsigned int i = 0;
-        for (i; i < TOTAL_LEVELS; i++) {
+        for (i; i< TOTAL_LEVELS; i++) {
             HEAD->next[i] = TAIL;
         }
-    return 0;
-
+        return 0;
+    }
 }
 
 SYSCALL_DEFINE0(mbx421_shutdown){
@@ -84,7 +83,7 @@ SYSCALL_DEFINE0(mbx421_shutdown){
             kfree(temp->next);
 
             mail *mailPtr = temp->mailbox->head->next;
-            unsigned in j = 0;
+            unsigned int j = 0;
             for(j; j < temp->mailbox->numMessages; j++){
                 temp->mailbox->head = mailPtr->next;
                 kfree(mailPtr);
@@ -109,19 +108,19 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
         return -ENODEV;
     // Bad ID
     if(id < 0){
-r       eturn -ENOENT;
+        return -ENOENT;
     }
     unsigned int currLevel = TOTAL_LEVELS - 1;
     skipListNode *temp = HEAD;
     // reassignment will be used to save nodes where temp traverses down and may need to be reassigned later
     skipListNode **reassignment = kmalloc(TOTAL_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
-    unsigned int i = 0;
+    int i = 0;
     for(i; i < TOTAL_LEVELS; i++){
         reassignment[i] = NULL;
     }
 
     // loop segfaults if i is made unsigned
-    int i = TOTAL_LEVELS - 1;
+    i = TOTAL_LEVELS - 1;
     for(i; i >= 0; i--) {
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
@@ -165,7 +164,7 @@ r       eturn -ENOENT;
     newNode->numPtrs = success;
 
     //reassignment
-    unsigned int i = 0;
+    i = 0;
     for(i; i <= success - 1; i ++){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
@@ -246,7 +245,7 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id){
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    int i = ACTIVE_LEVELS
+    int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
@@ -401,8 +400,9 @@ SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
         return -ENOENT;
     }
     // no messages in mailbox
-    if(currBox->mailbox->numMessages == 0)
+    if(currBox->mailbox->numMessages == 0){
         return -ESRCH;
+    }
     else{
         return currBox->mailbox->head->next->size;
     }
