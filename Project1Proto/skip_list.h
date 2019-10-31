@@ -56,6 +56,7 @@ long send(unsigned long id, const unsigned char *msg, long len);
 long recv(unsigned long id, unsigned char *msg, long len);
 
 
+// Checks if skip list has already been initialized, if not sets global variables and allocates appropriate memory
 long init(unsigned int ptrs, unsigned int prob){
     // already INITIALIZED
     if(INITIALIZED){
@@ -89,6 +90,7 @@ long addNode(unsigned long id){
     }
     unsigned int currLevel = TOTAL_LEVELS - 1;
     skipListNode *temp = HEAD;
+    // reassignment will be used to save nodes where temp traverses down and may need to be reassigned later
     skipListNode **reassignment = malloc(TOTAL_LEVELS * sizeof(skipListNode *));
     for(unsigned int i = 0; i < TOTAL_LEVELS; i++){
         reassignment[i] = NULL;
@@ -122,14 +124,7 @@ long addNode(unsigned long id){
     newNode->mailbox->tail->message = NULL;
     newNode->mailbox->head->next = newNode->mailbox->tail;
     newNode->mailbox->tail->next = newNode->mailbox->head;
-    /*
-    // 4 is arbitrary size that can be doubled later if necessary
-    newNode->mailbox->bufferSize = 4;
-    newNode->mailbox->head = 0;
-    */
     newNode->mailbox->numMessages = 0;
-
-    //newNode->mailbox->messages = malloc(newNode->mailbox->bufferSize * sizeof(char *));
 
     // flip coin
     unsigned int val = generate_random_int();
@@ -140,25 +135,17 @@ long addNode(unsigned long id){
     }
     if(success -1 > ACTIVE_LEVELS)
         ACTIVE_LEVELS = success - 1;
+    // allocates the new nodes array of next pointers
     newNode->next = malloc(success * sizeof(skipListNode *));
     newNode->numPtrs = success;
+
     //reassignment
     for(unsigned int i = 0; i <= success - 1; i ++){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
     TOTAL_NODES++;
-    free(reassignment);/*
-        for(int i = 0; i < temp->mailbox->numMessages; i++){
-            free(temp->mailbox->messages[temp->mailbox->head]);
-            temp->mailbox->head += 1;
-
-            // loops back around if needed
-            if(temp->mailbox->head > temp->mailbox->bufferSize)
-                temp->mailbox->head = 0;
-        }
-        free(temp->mailbox->messages);
-         */
+    free(reassignment);
     return 0;
 }
 
@@ -166,6 +153,7 @@ long removeNode(unsigned long id) {
     //bad ID
     if (id < 0)
         return -1;
+
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     skipListNode **reassignment = malloc(ACTIVE_LEVELS * sizeof(skipListNode *));
@@ -180,6 +168,7 @@ long removeNode(unsigned long id) {
         if (currLevel > 0)
             currLevel--;
     }
+    // the two loops will iterate until temp is pointing to the node prior to the one we want
     temp = temp->next[currLevel];
     // mailbox found
     if (temp->id == id){
@@ -187,21 +176,17 @@ long removeNode(unsigned long id) {
             reassignment[i]->next[i] = temp->next[i];
         }
         TOTAL_NODES--;
-        printf("FREEING ");
-        printf("%ld\n", temp->id);
         free(temp->next);
-        //free(temp->mailbox->messages);
-        /*
-        // NEED TO ITERATE OVER MAIL LINKED LIST AND DELETE ALL
+
+        // frees up the mail linked list within the mailbox
         mail *mailPtr = temp->mailbox->head->next;
-        while(mailPtr->next != temp->mailbox->tail){
-            mailPtr = mailPtr->next;
-            free(temp->mailbox->head->next);
-            temp->mailbox->head->next = mailPtr;
+        for(unsigned int j = 0; j < temp->mailbox->numMessages; j++){
+            temp->mailbox->head = mailPtr->next;
+            free(mailPtr);
+            mailPtr = temp->mailbox->head->next;
         }
         free(temp->mailbox->head);
         free(temp->mailbox->tail);
-         */
         free(temp->mailbox);
         free(temp);
         free(reassignment);
@@ -214,7 +199,9 @@ long removeNode(unsigned long id) {
     }
 }
 
+// will return a pointer to the node with a matching ID
 skipListNode* search(unsigned long id){
+    /*
     //bad ID
     if(id < 0) {
         // throw error
@@ -238,7 +225,7 @@ skipListNode* search(unsigned long id){
         }
     }
     // mailbox not found
-    //return -1;
+*/
 }
 
 void display(){
@@ -249,35 +236,28 @@ void display(){
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL) {
             temp = temp->next[currLevel];
-            printf("%ld", temp->id);
         }
         if(currLevel > 0){
-            printf("\n");
             currLevel--;
             temp = HEAD;
         }
     }
-    printf("\n");
 }
 
 void cleanUp(){
     skipListNode *temp = HEAD->next[0];
-for(unsigned int i = 0; i < TOTAL_NODES; i++){
+    for(unsigned int i = 0; i < TOTAL_NODES; i++){
         HEAD->next[0] = temp->next[0];
-        printf("FREEING ");
-        printf("%ld\n", temp->id);
         free(temp->next);
 
-        /*
         mail *mailPtr = temp->mailbox->head->next;
-        while(mailPtr != temp->mailbox->tail){
-            mailPtr = mailPtr->next;
-            free(temp->mailbox->head->next);
-            temp->mailbox->head->next = mailPtr;
+        for(unsigned int j = 0; j < temp->mailbox->numMessages; j++){
+            temp->mailbox->head = mailPtr->next;
+            free(mailPtr);
+            mailPtr = temp->mailbox->head->next;
         }
         free(temp->mailbox->head);
         free(temp->mailbox->tail);
-        */
         free(temp->mailbox);
         free(temp);
         temp = HEAD->next[0];
@@ -288,14 +268,45 @@ for(unsigned int i = 0; i < TOTAL_NODES; i++){
     free(TAIL);
 }
 
-// ============= MAILBOX STUFF =============
-
 long send(unsigned long id, const unsigned char *msg, long len){
+    /*
     // bad id
     if(id < 0){
         return -1;
     }
-    skipListNode *currBox = search(id);
+     skipListNode *currBox = search(id);
+
+
+    */
+
+    //bad ID
+    if(id < 0) {
+        // throw error
+        // return -1;
+    }
+    skipListNode *currBox = NULL;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
+            currBox = temp;
+        }
+        if(currLevel > 0) {
+            currLevel--;
+        }
+    }
+    // mailbox not found
+    if(currBox == NULL){
+        return -1;
+    }
+
     // without +16 I was getting a weird error and this corrected it, I am not sure why
     mail *newMail = malloc(sizeof(mail) +16 );
     newMail->size = len;
@@ -305,28 +316,65 @@ long send(unsigned long id, const unsigned char *msg, long len){
     newMail->next = currBox->mailbox->tail;
     currBox->mailbox->tail = newMail;
     currBox->mailbox->numMessages += 1;
-    printf("%s\n", currBox->mailbox->head->next->message);
     return 0;
 
 }
 
 long recv(unsigned long id, unsigned char *msg, long len){
+    /*
     // bad id
     if(id < 0){
         return -1;
     }
 
     skipListNode *currBox = search(id);
+    */
+
+    //bad ID
+    if(id < 0) {
+        // throw error
+        // return -1;
+    }
+    skipListNode *currBox = NULL;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
+            currBox = temp;
+        }
+        if(currLevel > 0) {
+            currLevel--;
+        }
+    }
+    // mailbox not found
+    if(currBox == NULL){
+        return -1;
+    }
+
     // mailbox empty
     if(currBox->mailbox->numMessages == 0){
         return -1;
     }
+
+    // copies items in kernel memory to user memory
     memcpy(msg, currBox->mailbox->head->next->message, len);
-    mail *temp = currBox->mailbox->head->next->next;
+
+    // manages the mail linked list
+    mail *mailTmp = currBox->mailbox->head->next->next;
     free(currBox->mailbox->head->next->message);
     free(currBox->mailbox->head->next);
-    currBox->mailbox->head->next = temp;
+    currBox->mailbox->head->next = mailTmp;
     currBox->mailbox->numMessages -= 1;
-    printf("%s\n", msg);
+    if(currBox->mailbox->numMessages == 0){
+        currBox->mailbox->tail = currBox->mailbox->head;
+        currBox->mailbox->head = currBox->mailbox->tail;
+    }
     return 0;
 }
