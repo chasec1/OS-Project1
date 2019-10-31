@@ -296,9 +296,10 @@ long send(unsigned long id, const unsigned char *msg, long len){
         return -1;
     }
     skipListNode *currBox = search(id);
-    mail *newMail = malloc(sizeof(mail));
+    // without +16 I was getting a weird error and this corrected it, I am not sure why
+    mail *newMail = malloc(sizeof(mail) +16 );
     newMail->size = len;
-    newMail->message = malloc(sizeof(msg));
+    newMail->message = malloc(sizeof(char)*len);
     memcpy(newMail->message,msg,len);
     currBox->mailbox->tail->next->next = newMail;
     newMail->next = currBox->mailbox->tail;
@@ -322,8 +323,10 @@ long recv(unsigned long id, unsigned char *msg, long len){
     }
     memcpy(msg, currBox->mailbox->head->next->message, len);
     mail *temp = currBox->mailbox->head->next->next;
+    free(currBox->mailbox->head->next->message);
     free(currBox->mailbox->head->next);
     currBox->mailbox->head->next = temp;
+    currBox->mailbox->numMessages -= 1;
     printf("%s\n", msg);
     return 0;
 }

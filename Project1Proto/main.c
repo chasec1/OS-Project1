@@ -31,24 +31,25 @@ int main(){
     printf("%ld\n", success);
     display();
 
-    /*
-    unsigned char message[3] = "hi";
-    success = send(20, message, 3);
+
+    unsigned char message[6] = "hello";
+    success = send(20, message, 6);
     printf("send 101 ");
     printf("%ld\n", success);
 
     unsigned char newMsg;
-    success = recv(20, &newMsg, 3);
+    success = recv(20, &newMsg, 6);
     printf("receive 101 ");
     printf("%s\n", &newMsg);
     printf("%ld\n", success);
-    */
+
     /*
     success = search(10);
     printf("SEARCH 10 ");
     printf("%ld\n", success);
     */
     cleanUp();
+
 
     return 0;
 }
