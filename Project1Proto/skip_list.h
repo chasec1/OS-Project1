@@ -272,7 +272,6 @@ long cleanUp(){
     skipListNode *temp = HEAD->next[0];
     for(unsigned int i = 0; i < TOTAL_NODES; i++){
         HEAD->next[0] = temp->next[0];
-        printf("id %ld\n", temp->id);
         free(temp->next);
 
         mail *mailPtr = temp->mailbox->head;
@@ -284,7 +283,6 @@ long cleanUp(){
         }
 
         free(temp->mailbox->head);
-//        free(temp->mailbox->tail);
         free(temp->mailbox);
         free(temp);
         temp = HEAD->next[0];

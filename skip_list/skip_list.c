@@ -73,33 +73,33 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob){
 
 SYSCALL_DEFINE0(mbx421_shutdown){
         //uninitialized skip list
-        if(!INITIALIZED)
+    if(!INITIALIZED)
         return -ENODEV;
 
-        skipListNode *temp = HEAD->next[0];
-        unsigned int i = 0;
-        for(i; i < TOTAL_NODES; i++){
-            HEAD->next[0] = temp->next[0];
-            kfree(temp->next);
+    skipListNode *temp = HEAD->next[0];
+    unsigned int i = 0;
+    for(i; i < TOTAL_NODES; i++){
+        HEAD->next[0] = temp->next[0];
+        kfree(temp->next);
 
-            mail *mailPtr = temp->mailbox->head->next;
-            unsigned int j = 0;
-            for(j; j < temp->mailbox->numMessages; j++){
-                temp->mailbox->head = mailPtr->next;
-                kfree(mailPtr);
-                mailPtr = temp->mailbox->head->next;
-            }
-            kfree(temp->mailbox->head);
-            kfree(temp->mailbox->tail);
-            kfree(temp->mailbox);
-            kfree(temp);
-            temp = HEAD->next[0];
+        mail *mailPtr = temp->mailbox->head;
+        while(mailPtr != NULL) {
+            temp->mailbox->head = mailPtr->next;
+            kfree(mailPtr->message);
+            kfree(mailPtr);
+            mailPtr = temp->mailbox->head;
         }
-        kfree(HEAD->next);
-        kfree(HEAD);
-        kfree(TAIL->next);
-        kfree(TAIL);
-        return 0;
+
+        kfree(temp->mailbox->head);
+        kfree(temp->mailbox);
+        kfree(temp);
+        temp = HEAD->next[0];
+    }
+    kfree(HEAD->next);
+    kfree(HEAD);
+    kfree(TAIL->next);
+    kfree(TAIL);
+    return 0;
 }
 
 SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
@@ -114,14 +114,12 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     skipListNode *temp = HEAD;
     // reassignment will be used to save nodes where temp traverses down and may need to be reassigned later
     skipListNode **reassignment = kmalloc(TOTAL_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
-    int i = 0;
-    for(i; i < TOTAL_LEVELS; i++){
+    for(unsigned int i = 0; i < TOTAL_LEVELS; i++){
         reassignment[i] = NULL;
     }
 
     // loop segfaults if i is made unsigned
-    i = TOTAL_LEVELS - 1;
-    for(i; i >= 0; i--) {
+    for(int i = TOTAL_LEVELS - 1; i >= 0; i--) {
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -140,14 +138,13 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     skipListNode *newNode = kmalloc(sizeof(skipListNode), GFP_KERNEL);
     newNode->id = id;
     newNode->mailbox = kmalloc(sizeof(mailbox), GFP_KERNEL);
-    newNode->mailbox->head = kmalloc(sizeof(mail), GFP_KERNEL);
-    newNode->mailbox->tail = kmalloc(sizeof(mail), GFP_KERNEL);
+    newNode->mailbox->head = kmalloc(sizeof(mail));
+    newNode->mailbox->tail = newNode->mailbox->head;
     newNode->mailbox->head->size = 0;
     newNode->mailbox->head->message = NULL;
     newNode->mailbox->tail->size = 0;
     newNode->mailbox->tail->message = NULL;
-    newNode->mailbox->head->next = newNode->mailbox->tail;
-    newNode->mailbox->tail->next = newNode->mailbox->head;
+    newNode->mailbox->head->next = NULL;
     newNode->mailbox->numMessages = 0;
 
     // flip coin
@@ -164,8 +161,7 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     newNode->numPtrs = success;
 
     //reassignment
-    i = 0;
-    for(i; i <= success - 1; i ++){
+    for(unsigned int i = 0; i <= success - 1; i ++){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
@@ -188,8 +184,7 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
     skipListNode **reassignment = kmalloc(ACTIVE_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
     // loop moves down
     // segfaults if i is made unsigned
-    int i = ACTIVE_LEVELS;
-    for (i; i >= 0; i--) {
+    for (int i = ACTIVE_LEVELS; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -202,23 +197,21 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
     temp = temp->next[currLevel];
     // mailbox found
     if (temp->id == id){
-        unsigned int i = 0;
-        for(i; i < temp->numPtrs; i++){
+        for(unsigned int i = 0; i < temp->numPtrs; i++){
             reassignment[i]->next[i] = temp->next[i];
         }
         TOTAL_NODES--;
         kfree(temp->next);
 
         // frees up the mail linked list within the mailbox
-        mail *mailPtr = temp->mailbox->head->next;
-        unsigned int j = 0;
-        for(j; j < temp->mailbox->numMessages; j++){
+        mail *mailPtr = temp->mailbox->head;
+        while(mailPtr != NULL) {
             temp->mailbox->head = mailPtr->next;
+            kfree(mailPtr->message);
             kfree(mailPtr);
-            mailPtr = temp->mailbox->head->next;
+            mailPtr = temp->mailbox->head;
         }
         kfree(temp->mailbox->head);
-        kfree(temp->mailbox->tail);
         kfree(temp->mailbox);
         kfree(temp);
         kfree(reassignment);
@@ -229,7 +222,6 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
         kfree(reassignment);
         return -ENOENT;
     }
-
 }
 
 SYSCALL_DEFINE1(mbx421_count, unsigned long, id){
@@ -302,22 +294,23 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
     }
 
     // without +16 I was getting a weird error and this corrected it, I am not sure why
-    mail *newMail = kmalloc(sizeof(mail) +16, GFP_KERNEL);
+    mail *newMail = kmalloc(sizeof(mail)+16, GFP_KERNEL);
     newMail->size = len;
     newMail->message = kmalloc(sizeof(char)*len, GFP_KERNEL);
     memcpy(newMail->message,msg,len);
-    currBox->mailbox->tail->next->next = newMail;
-    newMail->next = currBox->mailbox->tail;
+    currBox->mailbox->tail->next = newMail;
+    newMail->next = NULL;
     currBox->mailbox->tail = newMail;
     currBox->mailbox->numMessages += 1;
-return 0;
+    return 0;
+
 }
 
 SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long, len){
-    //uninitialized skip list
-    if(!INITIALIZED)
+   //uninitialized skip list
+    if(!INITIALIZED) {
         return -ENODEV;
-
+    }
     //bad ID
     if(id < 0) {
         return -ENOENT;
@@ -326,8 +319,7 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    int i = ACTIVE_LEVELS;
-    for(i; i >= 0; i--) {
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -362,9 +354,8 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     currBox->mailbox->numMessages -= 1;
     if(currBox->mailbox->numMessages == 0){
         currBox->mailbox->tail = currBox->mailbox->head;
-        currBox->mailbox->head = currBox->mailbox->tail;
     }
-return 0;
+    return 0;
 }
 
 SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
