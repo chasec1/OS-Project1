@@ -114,17 +114,19 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     skipListNode *temp = HEAD;
     // reassignment will be used to save nodes where temp traverses down and may need to be reassigned later
     skipListNode **reassignment = kmalloc(TOTAL_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
-    for(unsigned int i = 0; i < TOTAL_LEVELS; i++){
+    unsigned int i = 0;
+    for(i; i < TOTAL_LEVELS; i++){
         reassignment[i] = NULL;
     }
 
     // loop segfaults if i is made unsigned
-    for(int i = TOTAL_LEVELS - 1; i >= 0; i--) {
+    int j = TOTAL_LEVELS - 1;
+    for(j; j >= 0; j--) {
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
         }
-        reassignment[i] = temp;
+        reassignment[j] = temp;
         if(currLevel > 0){
             currLevel--;
         }
@@ -161,7 +163,8 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     newNode->numPtrs = success;
 
     //reassignment
-    for(unsigned int i = 0; i <= success - 1; i ++){
+    i = 0;
+    for(i; i <= success - 1; i ++){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
@@ -184,7 +187,8 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
     skipListNode **reassignment = kmalloc(ACTIVE_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
     // loop moves down
     // segfaults if i is made unsigned
-    for (int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS;
+    for (i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
@@ -197,8 +201,9 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
     temp = temp->next[currLevel];
     // mailbox found
     if (temp->id == id){
-        for(unsigned int i = 0; i < temp->numPtrs; i++){
-            reassignment[i]->next[i] = temp->next[i];
+        unsigned int j = 0;
+        for(j; j < temp->numPtrs; j++){
+            reassignment[i]->next[j] = temp->next[j];
         }
         TOTAL_NODES--;
         kfree(temp->next);
@@ -319,7 +324,8 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     // loop moves down
-    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
         // loop moves right
         while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
             temp = temp->next[currLevel];
