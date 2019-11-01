@@ -25,36 +25,47 @@ int main(){
     printf("%ld\n", success);
     display();
 
+
+    // SEND ++++++++++
+    unsigned char message1[7] = "hello!";
+    success = send(10, message1, 7);
+    printf("send ");
+    printf("%ld\n", success);
+    // SEND +++++++++++
+    unsigned char message2[7] = "world!";
+    success = send(10, message2, 7);
+    printf("send ");
+    printf("%ld\n", success);
+
+    display();
     /*
+    // RECV +++++++++++
+    unsigned char newMsg1;
+    success = recv(10, &newMsg1, 7);
+    printf("receive ");
+    printf("%s\n", &newMsg1);
+    printf("%ld\n", success);
+    */
+
+
+
     success = removeNode(10);
     printf("REMOVE 10 ");
     printf("%ld\n", success);
     display();
-    */
 
 
-    unsigned char message1[6] = "hello";
-    success = send(20, message1, 6);
-    printf("send 101 ");
-    printf("%ld\n", success);
 
-    unsigned char message2[6] = "world";
-    success = send(20, message2, 6);
-    printf("send 101 ");
-    printf("%ld\n", success);
 
-    display();
-    unsigned char newMsg1;
-    success = recv(20, &newMsg1, 6);
-    printf("receive 101 ");
-    printf("%s\n", &newMsg1);
-    printf("%ld\n", success);
-    display();
+
     unsigned char newMsg2;
-    success = recv(20, &newMsg2, 6);
-    printf("receive 101 ");
+    success = recv(10, &newMsg2, 7);
+    printf("receive  ");
     printf("%s\n", &newMsg2);
     printf("%ld\n", success);
+
+    display();
+
 
     /*
     success = search(10);

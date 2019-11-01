@@ -186,11 +186,12 @@ long removeNode(unsigned long id) {
         free(temp->next);
 
         // frees up the mail linked list within the mailbox
-        mail *mailPtr = temp->mailbox->head->next;
-        for(unsigned int j = 0; j < temp->mailbox->numMessages; j++){
+        mail *mailPtr = temp->mailbox->head;
+        while(mailPtr != NULL) {
             temp->mailbox->head = mailPtr->next;
+            free(mailPtr->message);
             free(mailPtr);
-            mailPtr = temp->mailbox->head->next;
+            mailPtr = temp->mailbox->head;
         }
         free(temp->mailbox->head);
  //       free(temp->mailbox->tail);
@@ -271,14 +272,17 @@ long cleanUp(){
     skipListNode *temp = HEAD->next[0];
     for(unsigned int i = 0; i < TOTAL_NODES; i++){
         HEAD->next[0] = temp->next[0];
+        printf("id %ld\n", temp->id);
         free(temp->next);
 
-        mail *mailPtr = temp->mailbox->head->next;
-        for(unsigned int j = 0; j < temp->mailbox->numMessages; j++){
+        mail *mailPtr = temp->mailbox->head;
+        while(mailPtr != NULL) {
             temp->mailbox->head = mailPtr->next;
+            free(mailPtr->message);
             free(mailPtr);
-            mailPtr = temp->mailbox->head->next;
+            mailPtr = temp->mailbox->head;
         }
+
         free(temp->mailbox->head);
 //        free(temp->mailbox->tail);
         free(temp->mailbox);
@@ -339,18 +343,11 @@ long send(unsigned long id, const unsigned char *msg, long len){
 }
 
 long recv(unsigned long id, unsigned char *msg, long len){
-    /*
-    // bad id
-    if(id < 0){
-        return -1;
-    }
 
-    skipListNode *currBox = search(id);
-    */
     //uninitialized skip list
-    if(!INITIALIZED)
+    if(!INITIALIZED) {
         return -ENODEV;
-
+    }
     //bad ID
     if(id < 0) {
         return -ENOENT;
@@ -394,7 +391,6 @@ long recv(unsigned long id, unsigned char *msg, long len){
     currBox->mailbox->numMessages -= 1;
     if(currBox->mailbox->numMessages == 0){
         currBox->mailbox->tail = currBox->mailbox->head;
-        currBox->mailbox->head = currBox->mailbox->tail;
     }
     return 0;
 }
