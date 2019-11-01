@@ -48,7 +48,7 @@ bool INITIALIZED = false;
 long init(unsigned int ptrs, unsigned int prob);
 long addNode(unsigned long id);
 long removeNode(unsigned long id);
-skipListNode* search(unsigned long id);
+//skipListNode* search(unsigned long id);
 void display();
 long cleanUp();
 
@@ -121,13 +121,12 @@ long addNode(unsigned long id){
     newNode->id = id;
     newNode->mailbox = malloc(sizeof(mailbox));
     newNode->mailbox->head = malloc(sizeof(mail));
-    newNode->mailbox->tail = malloc(sizeof(mail));
+    newNode->mailbox->tail = newNode->mailbox->head;
     newNode->mailbox->head->size = 0;
     newNode->mailbox->head->message = NULL;
     newNode->mailbox->tail->size = 0;
     newNode->mailbox->tail->message = NULL;
-    newNode->mailbox->head->next = newNode->mailbox->tail;
-    newNode->mailbox->tail->next = newNode->mailbox->head;
+    newNode->mailbox->head->next = NULL;
     newNode->mailbox->numMessages = 0;
 
     // flip coin
@@ -194,7 +193,7 @@ long removeNode(unsigned long id) {
             mailPtr = temp->mailbox->head->next;
         }
         free(temp->mailbox->head);
-        free(temp->mailbox->tail);
+ //       free(temp->mailbox->tail);
         free(temp->mailbox);
         free(temp);
         free(reassignment);
@@ -244,12 +243,24 @@ void display(){
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL) {
             temp = temp->next[currLevel];
+            printf("%ld", temp->id);
+            // prints mailboxes
+            if(i == 0){
+                mail *mailPtr = temp->mailbox->head->next;
+                printf("num messages = %d\n", temp->mailbox->numMessages);
+                for(int j = 0; j < temp->mailbox->numMessages; j++) {
+                    printf("Message %s", mailPtr->message);
+                    mailPtr = mailPtr->next;
+                }
+            }
         }
         if(currLevel > 0){
+            printf("\n");
             currLevel--;
             temp = HEAD;
         }
     }
+    printf("\n");
 }
 
 long cleanUp(){
@@ -269,7 +280,7 @@ long cleanUp(){
             mailPtr = temp->mailbox->head->next;
         }
         free(temp->mailbox->head);
-        free(temp->mailbox->tail);
+//        free(temp->mailbox->tail);
         free(temp->mailbox);
         free(temp);
         temp = HEAD->next[0];
@@ -282,16 +293,6 @@ long cleanUp(){
 }
 
 long send(unsigned long id, const unsigned char *msg, long len){
-
-    /*
-    // bad id
-    if(id < 0){
-        return -1;
-    }
-     skipListNode *currBox = search(id);
-
-
-    */
 
     //uninitialized skip list
     if(!INITIALIZED)
@@ -325,12 +326,12 @@ long send(unsigned long id, const unsigned char *msg, long len){
     }
 
     // without +16 I was getting a weird error and this corrected it, I am not sure why
-    mail *newMail = malloc(sizeof(mail) +16 );
+    mail *newMail = malloc(sizeof(mail)+16);
     newMail->size = len;
     newMail->message = malloc(sizeof(char)*len);
     memcpy(newMail->message,msg,len);
-    currBox->mailbox->tail->next->next = newMail;
-    newMail->next = currBox->mailbox->tail;
+    currBox->mailbox->tail->next = newMail;
+    newMail->next = NULL;
     currBox->mailbox->tail = newMail;
     currBox->mailbox->numMessages += 1;
     return 0;
