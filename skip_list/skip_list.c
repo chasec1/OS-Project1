@@ -140,7 +140,7 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     skipListNode *newNode = kmalloc(sizeof(skipListNode), GFP_KERNEL);
     newNode->id = id;
     newNode->mailbox = kmalloc(sizeof(mailbox), GFP_KERNEL);
-    newNode->mailbox->head = kmalloc(sizeof(mail));
+    newNode->mailbox->head = kmalloc(sizeof(mail), GFP_KERNEL);
     newNode->mailbox->tail = newNode->mailbox->head;
     newNode->mailbox->head->size = 0;
     newNode->mailbox->head->message = NULL;
@@ -416,4 +416,35 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id){
 
 return 0;
 }
+
+SYSCALL_DEFINE0(skip_list_display){
+    skipListNode *temp = HEAD;
+    unsigned long currLevel = ACTIVE_LEVELS;
+    // segfaults if i is made unsigned
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
+        // while temps next is less than id and temps next is not tail
+        while (temp->next[currLevel] != TAIL) {
+            temp = temp->next[currLevel];
+            printk("%ld", temp->id);
+            // prints mailboxes
+            if(i == 0){
+                mail *mailPtr = temp->mailbox->head->next;
+                printk("num messages = %d\n", temp->mailbox->numMessages);
+                int j = 0;
+                for(j; j < temp->mailbox->numMessages; j++) {
+                    printk("Message %s", mailPtr->message);
+                    mailPtr = mailPtr->next;
+                }
+            }
+        }
+        if(currLevel > 0){
+            printk("\n");
+            currLevel--;
+            temp = HEAD;
+        }
+    }
+    printk("\n");
+}
+
 

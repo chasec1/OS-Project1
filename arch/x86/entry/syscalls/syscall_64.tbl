@@ -365,6 +365,7 @@
 441 common  mbx421_length   __x64_sys_mbx421_length
 442 common  mbx421_acl_add   __x64_sys_mbx421_acl_add
 443 common  mbx421_acl_remove  __x64_sys_mbx421_acl_remove
+444 common  skip_list_display __x64_sys_skip_list_display
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
 # for native 64-bit operation. The __x32_compat_sys stubs are created
