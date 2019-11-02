@@ -38,22 +38,22 @@ int main(){
     printf("%ld\n", success);
 
     display();
-    /*
+
     // RECV +++++++++++
     unsigned char newMsg1;
     success = recv(10, &newMsg1, 7);
     printf("receive ");
     printf("%s\n", &newMsg1);
     printf("%ld\n", success);
-    */
 
 
 
+    /*
     success = removeNode(10);
     printf("REMOVE 10 ");
     printf("%ld\n", success);
     display();
-
+    */
 
 
 
@@ -66,14 +66,41 @@ int main(){
 
     display();
 
-
-    /*
-    success = search(10);
-    printf("SEARCH 10 ");
+    success = acl_add(10, 7);
+    printf("acl add  ");
     printf("%ld\n", success);
-    */
+
+    success = acl_add(10, 8);
+    printf("acl add  ");
+    printf("%ld\n", success);
+
+    success = acl_add(10, 9);
+    printf("acl add  ");
+    printf("%ld\n", success);
+
+    success = acl_rem(10, 8);
+    printf("acl rem  ");
+    printf("%ld\n", success);
+
+
     cleanUp();
+    /*
+    success = init(8,2);
+    printf("INIT");
+    printf("%ld\n", success);
 
-
+    for(int i = 0; i < 50; i++){
+        success = addNode(i);
+        printf("INSERT %d", i);
+        printf("%ld\n", success);
+    }
+    for(int i = 0; i < 50; i+=2){
+        unsigned char msg[3] = "hi";
+        success = send(i, msg, 3);
+        printf("send ");
+        printf("%ld\n", success);
+    }
+    display();
+     */
     return 0;
 }

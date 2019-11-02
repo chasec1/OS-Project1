@@ -4,8 +4,12 @@
 #include <linux/time.h>
 #include <linux/string.h>
 #include <linux/errno.h>
+#include <linux/cred.h>
 
 typedef struct mailbox{
+    unsigned int aclSize;
+    unsigned int aclMembers;
+    pid_t * aclist;
     unsigned int numMessages;
     struct mail *head;
     struct mail *tail;
@@ -51,6 +55,7 @@ SYSCALL_DEFINE2(mbx421_init, unsigned int, ptrs, unsigned int, prob){
         return -EEXIST;
     }
     else {
+        //seed_random((unsigned int)time(NULL));
         INITIALIZED = true;
         TOTAL_LEVELS = ptrs;
         PROBABILITY = prob;
@@ -91,6 +96,7 @@ SYSCALL_DEFINE0(mbx421_shutdown){
         }
 
         kfree(temp->mailbox->head);
+        kfree(temp->mailbox->aclist);
         kfree(temp->mailbox);
         kfree(temp);
         temp = HEAD->next[0];
@@ -99,6 +105,7 @@ SYSCALL_DEFINE0(mbx421_shutdown){
     kfree(HEAD);
     kfree(TAIL->next);
     kfree(TAIL);
+    INITIALIZED = false;
     return 0;
 }
 
@@ -148,6 +155,10 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
     newNode->mailbox->tail->message = NULL;
     newNode->mailbox->head->next = NULL;
     newNode->mailbox->numMessages = 0;
+    // 4 is arbitrary size, this array will grow as needed
+    newNode->mailbox->aclSize = 4;
+    newNode->mailbox->aclMembers = 1;
+    newNode->mailbox->aclist = NULL;
 
     // flip coin
     unsigned int val = generate_random_int();
@@ -217,6 +228,7 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
             mailPtr = temp->mailbox->head;
         }
         kfree(temp->mailbox->head);
+        kfree(temp->mailbox->aclist);
         kfree(temp->mailbox);
         kfree(temp);
         kfree(reassignment);
@@ -298,16 +310,36 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
         return -ENOENT;
     }
 
-    // without +16 I was getting a weird error and this corrected it, I am not sure why
-    mail *newMail = kmalloc(sizeof(mail)+16, GFP_KERNEL);
-    newMail->size = len;
-    newMail->message = kmalloc(sizeof(char)*len, GFP_KERNEL);
-    memcpy(newMail->message,msg,len);
-    currBox->mailbox->tail->next = newMail;
-    newMail->next = NULL;
-    currBox->mailbox->tail = newMail;
-    currBox->mailbox->numMessages += 1;
-    return 0;
+    // mailbox found
+
+    bool accessible = false;
+    if(currBox->mailbox->aclist == NULL){
+        accessible = true;
+    }
+    else{
+        int a = 0;
+        for(a; a < currBox->mailbox->numMessages; a++){
+            if(currBox->mailbox->aclist[i] == current_uid().val){
+                accessible = true;
+            }
+        }
+    }
+    if(accessible){
+        // without +16 I was getting a weird error and this corrected it, I am not sure why
+        mail *newMail = kmalloc(sizeof(mail) + 16, GFP_KERNEL);
+        newMail->size = len;
+        newMail->message = kmalloc(sizeof(char) * len, GFP_KERNEL);
+        memcpy(newMail->message,msg,len);
+        currBox->mailbox->tail->next = newMail;
+        newMail->next = NULL;
+        currBox->mailbox->
+        tail = newMail;
+        currBox->mailbox->numMessages += 1;
+        return 0;
+    }
+    else{
+        return -EPERM;
+    }
 
 }
 
@@ -349,6 +381,19 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
         return -ESRCH;
     }
 
+    bool accessible = false;
+    if(currBox->mailbox->aclist == NULL){
+        accessible = true;
+    }
+    else{
+        int a = 0;
+        for(a; a < currBox->mailbox->numMessages; a++){
+            if(currBox->mailbox->aclist[i] == current_uid().val){
+                accessible = true;
+            }
+        }
+    }
+    if(accessible){
     // copies items in kernel memory to user memory
     memcpy(msg, currBox->mailbox->head->next->message, len);
 
@@ -362,6 +407,10 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
         currBox->mailbox->tail = currBox->mailbox->head;
     }
     return 0;
+    }
+    else{
+        return -EPERM;
+    }
 }
 
 SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
@@ -408,13 +457,110 @@ SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
 
 
 SYSCALL_DEFINE2(mbx421_acl_add, unsigned long, id, pid_t, process_id){
+//uninitialized skip list
+    if(!INITIALIZED) {
+        return -ENODEV;
+    }
+    //bad ID
+    if(id < 0) {
+        return -ENOENT;
+    }
 
-return 0;
+    uid_t uid = current_uid().val;
+
+    if(uid > 0){
+        return EPERM;
+    }
+
+    skipListNode *currBox = NULL;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
+            currBox = temp;
+        }
+        if(currLevel > 0) {
+            currLevel--;
+        }
+    }
+    // mailbox not found
+    if(currBox == NULL){
+        return -ENOENT;
+    }
+    if(currBox->mailbox->aclist == NULL){
+       currBox->mailbox->aclist = kmalloc(currBox->mailbox->aclSize * sizeof(unsigned int), GFP_KERNEL);
+    }
+    currBox->mailbox->aclMembers += 1;
+    if(currBox->mailbox->aclMembers > currBox->mailbox->aclSize){
+        currBox->mailbox->aclist = krealloc(currBox->mailbox->aclist, currBox->mailbox->aclSize * 2, GFP_KERNEL);
+        currBox->mailbox->aclSize *= 2;
+    }
+    currBox->mailbox->aclist[currBox->mailbox->aclMembers - 1] = process_id;
+    return 0;
 }
 
 SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id){
+   //uninitialized skip list
+    if(!INITIALIZED) {
+        return -ENODEV;
+    }
+    //bad ID
+    if(id < 0) {
+        return -ENOENT;
+    }
 
-return 0;
+    uid_t uid = current_uid().val;
+
+    if(uid > 0){
+        return EPERM;
+    }
+
+    skipListNode *currBox = NULL;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    int i = ACTIVE_LEVELS;
+    for(i; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
+            currBox = temp;
+        }
+        if(currLevel > 0) {
+            currLevel--;
+        }
+    }
+    // mailbox not found
+    if(currBox == NULL){
+        return -ENOENT;
+    }
+    int j = 0;
+    for(j; j <currBox->mailbox->aclMembers; j++){
+        // if process id is found
+        if(currBox->mailbox->aclist[j] == process_id){
+            // loop starts at found id and shifts all to the right of the deleted left
+            int k = j;
+            for(k; k < currBox->mailbox->aclMembers; k++){
+                currBox->mailbox->aclist[k] = currBox->mailbox->aclist[k + 1];
+            }
+            currBox->mailbox->aclMembers -= 1;
+        }
+    }
+
+    return 0;
+
 }
 
 SYSCALL_DEFINE0(skip_list_display){

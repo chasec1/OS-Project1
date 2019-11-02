@@ -6,6 +6,9 @@
 #include <errno.h>
 
 typedef struct mailbox{
+    unsigned int aclSize;
+    unsigned int aclMembers;
+    unsigned int * aclist;
     unsigned int numMessages;
     struct mail *head;
     struct mail *tail;
@@ -48,6 +51,8 @@ bool INITIALIZED = false;
 long init(unsigned int ptrs, unsigned int prob);
 long addNode(unsigned long id);
 long removeNode(unsigned long id);
+long acl_add(unsigned long id, int process_id);
+long acl_rem(unsigned long id, int process_id);
 //skipListNode* search(unsigned long id);
 void display();
 long cleanUp();
@@ -70,7 +75,7 @@ long init(unsigned int ptrs, unsigned int prob){
         HEAD = malloc(sizeof(skipListNode));
         HEAD->id = -1;
         HEAD->numPtrs = ptrs;
-        HEAD->next = malloc(TOTAL_LEVELS * sizeof(skipListNode));
+        HEAD->next = malloc(TOTAL_LEVELS * sizeof(skipListNode) * 2);
         TAIL = malloc(sizeof(skipListNode));
         TAIL->id = -1;
         TAIL->numPtrs = 0;
@@ -128,6 +133,10 @@ long addNode(unsigned long id){
     newNode->mailbox->tail->message = NULL;
     newNode->mailbox->head->next = NULL;
     newNode->mailbox->numMessages = 0;
+    // 4 is arbitrary size, this array will grow as needed
+    newNode->mailbox->aclSize = 4;
+    newNode->mailbox->aclMembers = 0;
+    newNode->mailbox->aclist = NULL;
 
     // flip coin
     unsigned int val = generate_random_int();
@@ -194,7 +203,7 @@ long removeNode(unsigned long id) {
             mailPtr = temp->mailbox->head;
         }
         free(temp->mailbox->head);
- //       free(temp->mailbox->tail);
+        free(temp->mailbox->aclist);
         free(temp->mailbox);
         free(temp);
         free(reassignment);
@@ -207,34 +216,7 @@ long removeNode(unsigned long id) {
     }
 }
 
-// will return a pointer to the node with a matching ID
-skipListNode* search(unsigned long id){
-    /*
-    //bad ID
-    if(id < 0) {
-        // throw error
-        // return -1;
-    }
-    unsigned int currLevel = ACTIVE_LEVELS;
-    skipListNode *temp = HEAD;
-    // loop moves down
-    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
-        // loop moves right
-        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
-            temp = temp->next[currLevel];
-        }
-        // mailbox found
-        if(temp->next[currLevel]->id == id) {
-            temp = temp->next[currLevel];
-            return temp;
-        }
-        if(currLevel > 0) {
-            currLevel--;
-        }
-    }
-    // mailbox not found
-*/
-}
+
 
 void display(){
     skipListNode *temp = HEAD;
@@ -244,7 +226,7 @@ void display(){
         // while temps next is less than id and temps next is not tail
         while (temp->next[currLevel] != TAIL) {
             temp = temp->next[currLevel];
-            printf("%ld", temp->id);
+            printf("%ld, ", temp->id);
             // prints mailboxes
             if(i == 0){
                 mail *mailPtr = temp->mailbox->head->next;
@@ -283,6 +265,7 @@ long cleanUp(){
         }
 
         free(temp->mailbox->head);
+        free(temp->mailbox->aclist);
         free(temp->mailbox);
         free(temp);
         temp = HEAD->next[0];
@@ -291,6 +274,7 @@ long cleanUp(){
     free(HEAD);
     free(TAIL->next);
     free(TAIL);
+    INITIALIZED = false;
     return 0;
 }
 
@@ -391,4 +375,102 @@ long recv(unsigned long id, unsigned char *msg, long len){
         currBox->mailbox->tail = currBox->mailbox->head;
     }
     return 0;
+}
+
+long acl_add(unsigned long id, int process_id){
+    //uninitialized skip list
+    if(!INITIALIZED) {
+        return -ENODEV;
+    }
+    //bad ID
+    if(id < 0) {
+        return -ENOENT;
+    }
+    skipListNode *currBox = NULL;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
+            currBox = temp;
+        }
+        if(currLevel > 0) {
+            currLevel--;
+        }
+    }
+    // mailbox not found
+    if(currBox == NULL){
+        return -ENOENT;
+    }
+    if(currBox->mailbox->aclist == NULL){
+       currBox->mailbox->aclist = malloc(currBox->mailbox->aclSize * sizeof(unsigned int));
+
+    }
+    currBox->mailbox->aclMembers += 1;
+    if(currBox->mailbox->aclMembers > currBox->mailbox->aclSize){
+        currBox->mailbox->aclist = realloc(currBox->mailbox->aclist, currBox->mailbox->aclSize * 2);
+        currBox->mailbox->aclSize *= 2;
+    }
+    currBox->mailbox->aclist[currBox->mailbox->aclMembers - 1] = process_id;
+    printf(" list members %d\n", currBox->mailbox->aclMembers);
+    for(int i = 0; i <currBox->mailbox->aclMembers; i++){
+        printf("%d", currBox->mailbox->aclist[i]);
+    }
+    printf("\n");
+    return 0;
+}
+
+long acl_rem(unsigned long id, int process_id){
+    //uninitialized skip list
+    if(!INITIALIZED) {
+        return -ENODEV;
+    }
+    //bad ID
+    if(id < 0) {
+        return -ENOENT;
+    }
+    skipListNode *currBox = NULL;
+    unsigned int currLevel = ACTIVE_LEVELS;
+    skipListNode *temp = HEAD;
+    // loop moves down
+    for(int i = ACTIVE_LEVELS; i >= 0; i--) {
+        // loop moves right
+        while (temp->next[currLevel] != TAIL && temp->next[currLevel]->id < id) {
+            temp = temp->next[currLevel];
+        }
+        // mailbox found
+        if(temp->next[currLevel]->id == id) {
+            temp = temp->next[currLevel];
+            currBox = temp;
+        }
+        if(currLevel > 0) {
+            currLevel--;
+        }
+    }
+    // mailbox not found
+    if(currBox == NULL){
+        return -ENOENT;
+    }
+    for(int j = 0; j <currBox->mailbox->aclMembers; j++){
+        // if process id is found
+        if(currBox->mailbox->aclist[j] == process_id){
+            // loop starts at found id and shifts all to the right of the deleted left
+            for(int k = j; k < currBox->mailbox->aclMembers; k++){
+                currBox->mailbox->aclist[k] = currBox->mailbox->aclist[k + 1];
+            }
+            currBox->mailbox->aclMembers -= 1;
+        }
+    }
+    for(int i = 0; i <currBox->mailbox->aclMembers; i++){
+        printf("%d", currBox->mailbox->aclist[i]);
+    }
+    printf("\n");
+    return 0;
+
 }
