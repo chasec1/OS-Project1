@@ -1,10 +1,12 @@
 Test name: Driver1.c
+to compile with makefile, make Driver1
 
 This test only utilizes the most basic functions, init, create, send, recv, destroy, and shutdown. This test does
 not work normally but when I run with valgrind on clion I receive the correct message
 
 
 Test name: Driver2.c
+to compile with make file, make Driver2
 
 It is supposed to fork a child process and have the parent and child processes run through for loops where
 they should be conflicting with each other simultaneously, first they both add mailboxes at intervals that
