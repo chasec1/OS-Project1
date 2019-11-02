@@ -5,6 +5,7 @@
 #include <linux/string.h>
 #include <linux/errno.h>
 #include <linux/cred.h>
+#include <linux/rwlock.h>
 
 typedef struct mailbox{
     unsigned int aclSize;
@@ -126,6 +127,8 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
         reassignment[i] = NULL;
     }
 
+    // wait for a rwlock here, we dont want the skip list to be changed while another process is navigating it
+
     // loop segfaults if i is made unsigned
     int j = TOTAL_LEVELS - 1;
     for(j; j >= 0; j--) {
@@ -143,6 +146,7 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
         kfree(reassignment);
         return -EEXIST;
     }
+
     // creates new node
     skipListNode *newNode = kmalloc(sizeof(skipListNode), GFP_KERNEL);
     newNode->id = id;
@@ -179,6 +183,9 @@ SYSCALL_DEFINE1(mbx421_create, unsigned long, id){
         newNode->next[i] = reassignment[i]->next[i];
         reassignment[i]->next[i] = newNode;
     }
+
+    // signal rw lock here, alterations to list are complete
+
     TOTAL_NODES++;
     kfree(reassignment);
     return 0;
@@ -196,6 +203,9 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
     skipListNode **reassignment = kmalloc(ACTIVE_LEVELS * sizeof(skipListNode *), GFP_KERNEL);
+
+    // wait for a rwlock here, we dont want the skip list to be changed while another process is navigating it
+
     // loop moves down
     // segfaults if i is made unsigned
     int i = ACTIVE_LEVELS;
@@ -234,6 +244,9 @@ SYSCALL_DEFINE1(mbx421_destroy, unsigned long, id){
         kfree(reassignment);
         return 0;
     }
+
+    // signal rw lock, all changes have been made
+
     // mailbox not found
     else {
         kfree(reassignment);
@@ -253,6 +266,9 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id){
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
+
+    // wait rwlock for traversal
+
     // loop moves down
     int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
@@ -269,6 +285,9 @@ SYSCALL_DEFINE1(mbx421_count, unsigned long, id){
             currLevel--;
         }
     }
+
+    // signal rwlock traversal complete
+
     // mailbox not found
     if(currBox == NULL){
         return -ENOENT;
@@ -289,6 +308,9 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
+
+    // wait for rw lock so traversal can be performed
+
     // loop moves down
     int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
@@ -309,7 +331,7 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
     if(currBox == NULL){
         return -ENOENT;
     }
-
+    // signal rwlock traversal complete
     // mailbox found
 
     bool accessible = false;
@@ -319,11 +341,14 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
     else{
         int a = 0;
         for(a; a < currBox->mailbox->numMessages; a++){
-            if(currBox->mailbox->aclist[i] == current_uid().val){
+            if(currBox->mailbox->aclist[i] == current->pid){
                 accessible = true;
             }
         }
     }
+
+    //wait for rwlock to be available so mail can be retrieved
+
     if(accessible){
         // without +16 I was getting a weird error and this corrected it, I am not sure why
         mail *newMail = kmalloc(sizeof(mail) + 16, GFP_KERNEL);
@@ -337,6 +362,9 @@ SYSCALL_DEFINE3(mbx421_send, unsigned long, id, const unsigned char __user, *msg
         currBox->mailbox->numMessages += 1;
         return 0;
     }
+
+    // signal rw lock changes finished
+
     else{
         return -EPERM;
     }
@@ -355,6 +383,9 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
+
+    // wait for rwlock so traversal can be done
+
     // loop moves down
     int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
@@ -371,6 +402,9 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
             currLevel--;
         }
     }
+
+    //signal rwlock traversal complete
+
     // mailbox not found
     if(currBox == NULL){
         return -ENOENT;
@@ -388,11 +422,13 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     else{
         int a = 0;
         for(a; a < currBox->mailbox->numMessages; a++){
-            if(currBox->mailbox->aclist[i] == current_uid().val){
+            if(currBox->mailbox->aclist[i] == current->pid){
                 accessible = true;
             }
         }
     }
+
+    //wait rw lock, dont want messages to change before they can be recieved
     if(accessible){
     // copies items in kernel memory to user memory
     memcpy(msg, currBox->mailbox->head->next->message, len);
@@ -406,6 +442,7 @@ SYSCALL_DEFINE3(mbx421_recv, unsigned long, id, unsigned char __user, *msg, long
     if(currBox->mailbox->numMessages == 0){
         currBox->mailbox->tail = currBox->mailbox->head;
     }
+    // signal rwlock accessing of mail complete
     return 0;
     }
     else{
@@ -425,6 +462,9 @@ SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
+
+    // wait rwlock for traversal
+
     // loop moves down
     int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
@@ -441,6 +481,9 @@ SYSCALL_DEFINE1(mbx421_length, unsigned long, id){
             currLevel--;
         }
     }
+
+    //signal rwlock traversal complete
+
     // mailbox not found
     if(currBox == NULL){
         return -ENOENT;
@@ -475,6 +518,9 @@ SYSCALL_DEFINE2(mbx421_acl_add, unsigned long, id, pid_t, process_id){
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
+
+    // wait rwlock for skip list traversal
+
     // loop moves down
     int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
@@ -491,10 +537,16 @@ SYSCALL_DEFINE2(mbx421_acl_add, unsigned long, id, pid_t, process_id){
             currLevel--;
         }
     }
+
+    // signal rwlock traversal complete
+
     // mailbox not found
     if(currBox == NULL){
         return -ENOENT;
     }
+
+    //wait rw lock dont want to make changes to acl structure while another process is
+
     if(currBox->mailbox->aclist == NULL){
        currBox->mailbox->aclist = kmalloc(currBox->mailbox->aclSize * sizeof(unsigned int), GFP_KERNEL);
     }
@@ -504,6 +556,9 @@ SYSCALL_DEFINE2(mbx421_acl_add, unsigned long, id, pid_t, process_id){
         currBox->mailbox->aclSize *= 2;
     }
     currBox->mailbox->aclist[currBox->mailbox->aclMembers - 1] = process_id;
+
+    // alterations finished signal rwlock
+
     return 0;
 }
 
@@ -526,6 +581,9 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id){
     skipListNode *currBox = NULL;
     unsigned int currLevel = ACTIVE_LEVELS;
     skipListNode *temp = HEAD;
+
+   //wait rwlock for skip list traversal
+
     // loop moves down
     int i = ACTIVE_LEVELS;
     for(i; i >= 0; i--) {
@@ -542,10 +600,16 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id){
             currLevel--;
         }
     }
+
+    //traversal complete signal rwlock
+
     // mailbox not found
     if(currBox == NULL){
         return -ENOENT;
     }
+
+    // wait rwlock so edits can be made uniterrupted
+
     int j = 0;
     for(j; j <currBox->mailbox->aclMembers; j++){
         // if process id is found
@@ -558,6 +622,8 @@ SYSCALL_DEFINE2(mbx421_acl_remove, unsigned long, id, pid_t, process_id){
             currBox->mailbox->aclMembers -= 1;
         }
     }
+
+    // edits finished signal rwlock
 
     return 0;
 
