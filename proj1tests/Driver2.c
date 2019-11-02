@@ -47,7 +47,7 @@ int main(){
 
         // deletes every 5th mailbox
         for(int i = 0; i < 50; i+=2){
-            syscall(sys_mbx421_send, i, msg, 3);
+            syscall(sys_mbx421_destroy, i);
 
         }
 
@@ -81,5 +81,8 @@ int main(){
         }
 
     }
+
+    syscall(sys_skip_list_display);
+
     return 0;
 }

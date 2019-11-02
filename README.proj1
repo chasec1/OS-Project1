@@ -1,0 +1,5 @@
+The only additional syscall I added was a display function that would have roughly printed out the skiplist as well
+as the mailboxes with their mail. I could not get my driver to function properly for my kernel implementation so I am
+not sure it would have worked correctly however it did work in userspace. I know all of my userspace implementations
+of the syscalls work without leaks except acl_add and acl_rem which, I am not sure about those 2. I was unable to
+successfully implement locking so I left comments where I would lock and why. Sorry for the hot mess :^/
