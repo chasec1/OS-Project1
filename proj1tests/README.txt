@@ -1,3 +1,9 @@
+Test name: Driver1.c
+
+This test only utilizes the most basic functions, init, create, send, recv, destroy, and shutdown. This test does
+not work normally but when I run with valgrind on clion I receive the correct message
+
+
 Test name: Driver2.c
 
 It is supposed to fork a child process and have the parent and child processes run through for loops where
